@@ -2,7 +2,7 @@ from annotationRect import AnnotationRect
 import os
 from PIL import ImageDraw
 
-folder_offset = 'src/dataset_mmp/'
+folder_offset = 'dataset_mmp/'
 
 
 def convert_file_annotation_rect(location):

@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def anchor_grid(fmap_cols, fmap_rows, scale_factor, scales, aspect_ratios):
+def anchor_grid(fmap_rows, fmap_cols, scale_factor, scales, aspect_ratios):
     scales_size = np.shape(scales)[0]
     aspect_ratios_size = np.shape(aspect_ratios)[0]
 

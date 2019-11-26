@@ -1,27 +1,20 @@
-import tensorflow as tf
+import nodes
 
 
-def mobile_net_v2():
-    return tf.keras.applications.mobilenet_v2.MobileNetV2(alpha=1.0,
-                                                          include_top=False,
-                                                          weights='imagenet',
-                                                          pooling=None)
+def build(images_placeholder, labels_placeholder, batch_size, num_scales, num_aspect_ratios):
+    norm = nodes.normalize(input_tensor=images_placeholder)
+    net = nodes.mobile_net_v2(norm)
 
+    convolution = nodes.convolution(input_tensor=net,
+                                    scales=num_scales,
+                                    aspect_ratios=num_aspect_ratios)
 
-def convolution(input_tensor, scales, aspect_ratios):
-    return tf.layers.conv2d(
-        inputs=input_tensor,
-        filters=scales * aspect_ratios * 2,
-        kernel_size=1,
-        strides=1,
-        padding='same',
-        activation=None,
-        # kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=weight_decay),
-        kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
-        bias_initializer=tf.constant_initializer(0.0))
+    reshape = nodes.reshape(input_tensor=convolution,
+                            batch_size=batch_size,
+                            scales=num_scales,
+                            aspect_ratios=num_aspect_ratios)
 
+    calculate_loss = nodes.calculate_loss(input_tensor=reshape,
+                                          labels_tensor=labels_placeholder)
+    return calculate_loss
 
-def normalize(input_tensor):
-    cast = tf.cast(input_tensor, tf.float32)
-    norm = cast / 255
-    return norm

@@ -25,23 +25,23 @@ def normalize(input_tensor):
 
 
 def reshape(input_tensor, batch_size, scales, aspect_ratios, f_cols, f_rows):
-    print('before reshape', tf.shape(input_tensor))
     result = tf.reshape(input_tensor, [batch_size,
                                        f_rows,
                                        f_cols,
                                        scales,
                                        aspect_ratios,
                                        2])
-    print('after reshape', tf.shape(result))
     return result
 
 
 def calculate_loss(input_tensor, labels_tensor):
-    cast_output = tf.cast(input_tensor, tf.float32)
+    cast_input = tf.cast(input_tensor, tf.float32)
     cast_labels = tf.cast(labels_tensor, tf.int32)
+    # print_input = tf.print(cast_input, [cast_input], 'input')
+    # print_labels = tf.print(cast_labels, [cast_labels], 'label')
     objective_loss = tf.losses.sparse_softmax_cross_entropy(
         labels=cast_labels,
-        logits=cast_output
+        logits=cast_input
     )
     # regularization_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
     # total_loss = tf.add(objective_loss, regularization_loss)

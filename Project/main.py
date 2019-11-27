@@ -3,16 +3,25 @@ import data
 import graph
 import anchorgrid
 
-f_map_rows = 20
-f_map_cols = 20
+f_map_rows = 40
+f_map_cols = 32
 scale_factor = 16.0
 scales = [70, 100, 140, 200]
 aspect_ratios = [0.5, 1.0, 2.0]
 batch_size = 10
 iou = 0.5
 
-images_placeholder = tf.placeholder(tf.float32, shape=(batch_size, None, None, 3))
-labels_placeholder = tf.placeholder(tf.float32, shape=(batch_size, f_map_rows, f_map_cols, len(scales), len(aspect_ratios), 1))
+images_placeholder = tf.placeholder(tf.float32, shape=(batch_size,
+                                                       None,
+                                                       None,
+                                                       3))
+
+labels_placeholder = tf.placeholder(tf.float32, shape=(batch_size,
+                                                       f_map_rows,
+                                                       f_map_cols,
+                                                       len(scales),
+                                                       len(aspect_ratios),
+                                                       1))
 
 graph = graph.build(images_placeholder=images_placeholder,
                     labels_placeholder=labels_placeholder,
@@ -28,7 +37,9 @@ my_anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
                                         scales=scales,
                                         aspect_ratios=aspect_ratios)
 
-batch_images, batch_labels = data.make_random_batch(batch_size, my_anchor_grid, iou)
+batch_images, batch_labels = data.make_random_batch(batch_size=batch_size,
+                                                    anchor_grid=my_anchor_grid,
+                                                    iou=iou)
 
 with tf.compat.v1.Session() as sess:
     print('Session starting...')

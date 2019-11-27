@@ -11,14 +11,16 @@ aspect_ratios = [0.5, 1.0, 2.0]
 batch_size = 10
 iou = 0.5
 
-images_placeholder = tf.placeholder(tf.float32, shape=(None, None, None, 3))
-labels_placeholder = tf.placeholder(tf.float32, shape=(None, f_map_rows, f_map_cols, len(scales), len(aspect_ratios), 1))
+images_placeholder = tf.placeholder(tf.float32, shape=(batch_size, None, None, 3))
+labels_placeholder = tf.placeholder(tf.float32, shape=(batch_size, f_map_rows, f_map_cols, len(scales), len(aspect_ratios), 1))
 
 graph = graph.build(images_placeholder=images_placeholder,
                     labels_placeholder=labels_placeholder,
                     batch_size=batch_size,
                     num_scales=len(scales),
-                    num_aspect_ratios=len(aspect_ratios))
+                    num_aspect_ratios=len(aspect_ratios),
+                    f_rows=f_map_rows,
+                    f_cols=f_map_cols)
 
 my_anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
                                         f_map_cols=f_map_cols,

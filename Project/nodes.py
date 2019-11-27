@@ -24,13 +24,16 @@ def normalize(input_tensor):
     return norm
 
 
-def reshape(input_tensor, batch_size, scales, aspect_ratios):
-    return tf.reshape(input_tensor, [batch_size,
-                                     tf.shape(input_tensor)[1],
-                                     tf.shape(input_tensor)[2],
-                                     scales,
-                                     aspect_ratios,
-                                     2])
+def reshape(input_tensor, batch_size, scales, aspect_ratios, f_cols, f_rows):
+    print('before reshape', tf.shape(input_tensor))
+    result = tf.reshape(input_tensor, [batch_size,
+                                       f_rows,
+                                       f_cols,
+                                       scales,
+                                       aspect_ratios,
+                                       2])
+    print('after reshape', tf.shape(result))
+    return result
 
 
 def calculate_loss(input_tensor, labels_tensor):

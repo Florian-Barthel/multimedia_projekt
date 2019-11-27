@@ -47,13 +47,15 @@ def make_random_batch(batch_size, anchor_grid, iou):
     labels = []
     for _ in range(batch_size):
         key, value = random.choice(list(items.items()))
-        img = np.array(Image.open(key))
+        # img = np.array(Image.open(key))
+        img = np.array(Image.open(key).resize((224, 224))).astype(np.float) / 128 - 1
         images.append(img)
 
         max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, value)
         indices = np.where(max_overlaps > iou)
         boxes = np.zeros(anchor_grid.shape[:-1], dtype=np.int64)
         boxes[indices] = 1
+        boxes = np.expand_dims(boxes, axis=-1)
         labels.append(boxes)
     return images, labels
 

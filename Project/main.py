@@ -5,6 +5,8 @@ from tqdm import tqdm
 import numpy as np
 import tensorflow as tf
 from PIL import Image
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 f_map_rows = 10
 f_map_cols = 10
@@ -54,7 +56,9 @@ def optimize(my_loss):
 
 optimize = optimize(calculate_loss)
 
-with tf.compat.v1.Session() as sess:
+gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
+config = tf.ConfigProto(gpu_options=gpu_options)
+with tf.Session(config=config) as sess:
     print('Session starting...')
     tf.compat.v1.global_variables_initializer().run()
     progress_bar = tqdm(range(iterations))

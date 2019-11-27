@@ -1,12 +1,13 @@
+from tqdm import tqdm
+import numpy as np
+from PIL import Image
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+import tensorflow as tf
 import data
 import graph
 import anchorgrid
-from tqdm import tqdm
-import numpy as np
-import tensorflow as tf
-from PIL import Image
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 f_map_rows = 10
 f_map_cols = 10
@@ -16,7 +17,7 @@ aspect_ratios = [0.5, 0.75, 1.0, 1.5, 2.0]
 batch_size = 20
 iou = 0.5
 learning_rate = 0.05
-iterations = 100
+iterations = 1
 negative_percentage = 0.05
 
 images_placeholder = tf.placeholder(tf.float32, shape=(None,

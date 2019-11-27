@@ -3,7 +3,6 @@ import numpy as np
 import os
 import random
 from annotationRect import AnnotationRect
-import anchorgrid
 import geometry
 
 folder_offset = 'dataset_mmp/'
@@ -45,26 +44,41 @@ def make_random_batch(batch_size, anchor_grid, iou):
     items = get_dict_from_folder('train')
     images = []
     labels = []
+    gt_rects = []
     for _ in range(batch_size):
-        key, value = random.choice(list(items.items()))
-        # img = np.array(Image.open(key))
-        img = np.array(Image.open(key).resize((224, 224))).astype(np.float) / 128 - 1
-        images.append(img)
+        image_path, gt_annotation_rects = random.choice(list(items.items()))
+        gt_rects.append(gt_annotation_rects)
 
-        max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, value)
+        img = np.array(Image.open(image_path))
+        h, w = img.shape[:2]
+        img_pad = np.pad(img, pad_width=((0, 320 - h), (0, 320 - w), (0, 0)), mode='constant', constant_values=0)
+        img_norm = img_pad.astype(np.float) / 128 - 1
+        images.append(img_norm)
+
+        max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_annotation_rects)
         indices = np.where(max_overlaps > iou)
         boxes = np.zeros(anchor_grid.shape[:-1], dtype=np.int64)
         boxes[indices] = 1
         boxes = np.expand_dims(boxes, axis=-1)
         labels.append(boxes)
-    return images, labels
+    return images, labels, gt_rects
 
 
-# my_anchor_grid = anchorgrid.anchor_grid(fmap_rows=20,
-#                                         fmap_cols=20,
-#                                         scale_factor=16.0,
-#                                         scales=[70, 100, 140, 200],
-#                                         aspect_ratios=[0.5, 1.0, 2.0])
-#
-# (batch_images, batch_labels) = make_random_batch(5, my_anchor_grid, 0.5)
-# print()
+def convert_to_annotation_rects_output(anchor_grid, output):
+    remove_dimension = np.argmax(output, axis=-1)
+    filtered_indices = np.where(remove_dimension == 1)
+    max_boxes = anchor_grid[filtered_indices]
+
+    # * = tuple unpacking
+    annotated_boxes = [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
+    return annotated_boxes
+
+
+def convert_to_annotation_rects_label(anchor_grid, labels):
+    filtered_indices = np.where(labels == 1)
+    remove_last = filtered_indices[:4]
+    max_boxes = anchor_grid[remove_last]
+
+    # * = tuple unpacking
+    annotated_boxes = [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
+    return annotated_boxes

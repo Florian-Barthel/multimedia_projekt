@@ -1,8 +1,7 @@
 import nodes
 
 
-def build(images_placeholder, labels_placeholder, batch_size, num_scales, num_aspect_ratios, f_rows, f_cols):
-    # norm = nodes.normalize(input_tensor=images_placeholder)
+def output(images_placeholder, num_scales, num_aspect_ratios, f_rows, f_cols):
     net = nodes.mobile_net_v2(images_placeholder)
 
     convolution = nodes.convolution(input_tensor=net,
@@ -10,13 +9,14 @@ def build(images_placeholder, labels_placeholder, batch_size, num_scales, num_as
                                     aspect_ratios=num_aspect_ratios)
 
     reshape = nodes.reshape(input_tensor=convolution,
-                            batch_size=batch_size,
                             scales=num_scales,
                             aspect_ratios=num_aspect_ratios,
                             f_rows=f_rows,
                             f_cols=f_cols)
+    return reshape
 
-    calculate_loss = nodes.calculate_loss(input_tensor=reshape,
-                                          labels_tensor=labels_placeholder)
-    return calculate_loss
 
+def loss(input_tensor, labels_placeholder, negative_percentage):
+    return nodes.calculate_loss(input_tensor=input_tensor,
+                                labels_tensor=labels_placeholder,
+                                negative_percentage=negative_percentage)

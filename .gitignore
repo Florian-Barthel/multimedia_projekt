@@ -106,3 +106,4 @@ venv.bak/
 # own
 .idea
 .DS_Store
+Project/test_images/

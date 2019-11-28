@@ -32,20 +32,22 @@ def reshape(input_tensor, scales, aspect_ratios, f_cols, f_rows):
 def calculate_loss(input_tensor, labels_tensor, negative_percentage):
     cast_input = tf.cast(input_tensor, tf.float32)
     cast_labels = tf.cast(labels_tensor, tf.int32)
-    random_labels = tf.random.uniform(
+
+    random_weights = tf.random.uniform(
         (tf.shape(labels_tensor)),
         minval=0,
         maxval=1,
         dtype=tf.dtypes.float32
     )
-    reduced_labels = tf.where(condition=random_labels < negative_percentage, x=random_labels * 0, y=random_labels)
-    labels_filtered = tf.math.logical_or(x=tf.cast(reduced_labels, tf.bool), y=tf.cast(cast_labels, tf.bool))
-    cast_labels_filtered = tf.cast(labels_filtered, tf.int32)
-
+    reduced_weights = tf.where(condition=random_weights < negative_percentage, x=random_weights * 0, y=random_weights)
+    ceil_weights = tf.math.ceil(reduced_weights)
+    cast_weights_filtered = tf.cast(ceil_weights, tf.int32)
+    weights_filtered_bool = tf.math.logical_or(x=tf.cast(cast_weights_filtered, tf.bool), y=tf.cast(cast_labels, tf.bool))
+    weights_filtered_int = tf.cast(weights_filtered_bool, tf.int32)
     objective_loss = tf.losses.sparse_softmax_cross_entropy(
         labels=cast_labels,
         logits=cast_input,
-        weights=cast_labels_filtered
+        weights=weights_filtered_int
     )
     # regularization_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
     # total_loss = tf.add(objective_loss, regularization_loss)

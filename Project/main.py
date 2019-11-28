@@ -16,8 +16,8 @@ scales = [70, 100, 140, 200]
 aspect_ratios = [0.5, 0.75, 1.0, 1.5, 2.0]
 batch_size = 20
 iou = 0.5
-learning_rate = 0.05
-iterations = 1
+learning_rate = 0.20
+iterations = 10
 negative_percentage = 0.05
 
 images_placeholder = tf.placeholder(tf.float32, shape=(None,
@@ -80,17 +80,14 @@ with tf.Session(config=config) as sess:
                                                    labels_placeholder: test_labels})
 
     for i in range(num_test_images):
-        output_annotation_rects = data.convert_to_annotation_rects_output(my_anchor_grid, output[i])
-        labels_annotation_rects = data.convert_to_annotation_rects_label(my_anchor_grid, test_labels[i])
-        norm_img = ((test_images[i] + 1) * 128).astype(np.uint8)
-        img = Image.fromarray(norm_img, 'RGB')
+        img = Image.fromarray(((test_images[i] + 1) * 128).astype(np.uint8), 'RGB')
         data.draw_bounding_boxes(image=img,
-                                 annotation_rects=labels_annotation_rects,
+                                 annotation_rects=data.convert_to_annotation_rects_label(my_anchor_grid, test_labels[i]),
                                  color=(255, 100, 100))
+        data.draw_bounding_boxes(image=img,
+                                 annotation_rects=data.convert_to_annotation_rects_output(my_anchor_grid, output[i]),
+                                 color=(100, 255, 100))
         data.draw_bounding_boxes(image=img,
                                  annotation_rects=gt_annotation_rects[i],
                                  color=(100, 100, 255))
-        data.draw_bounding_boxes(image=img,
-                                 annotation_rects=output_annotation_rects,
-                                 color=(100, 255, 100))
         img.save('test_images/max_overlap_boxes_{}.jpg'.format(i))

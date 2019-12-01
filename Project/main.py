@@ -20,6 +20,8 @@ learning_rate = 0.20
 iterations = 10
 negative_percentage = 0.05
 
+logs_directory = './logs'
+
 images_placeholder = tf.placeholder(tf.float32, shape=(None,
                                                        320,
                                                        320,
@@ -57,22 +59,30 @@ def optimize(my_loss):
 
 optimize = optimize(calculate_loss)
 
+tf.summary.scalar('loss', calculate_loss)
+merged_summary = tf.summary.merge_all()
+
 gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
 config = tf.ConfigProto(gpu_options=gpu_options)
 with tf.Session(config=config) as sess:
     print('Session starting...')
     tf.compat.v1.global_variables_initializer().run()
+    # TensorBoard graph summary
+    log_writer = tf.summary.FileWriter(logs_directory, sess.graph)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
         batch_images, batch_labels, _ = data.make_random_batch(batch_size=batch_size,
                                                                anchor_grid=my_anchor_grid,
                                                                iou=iou)
 
-        loss, _ = sess.run([calculate_loss, optimize], feed_dict={images_placeholder: batch_images,
-                                                                  labels_placeholder: batch_labels})
+        loss, _, summary = sess.run([calculate_loss, optimize, merged_summary],
+                                    feed_dict={images_placeholder: batch_images,
+                                               labels_placeholder: batch_labels})
 
         description = ' loss:' + str(np.around(loss, decimals=5))
         progress_bar.set_description(description, refresh=True)
+        # TensorBoard scalar summary
+        log_writer.add_summary(summary, i)
 
     num_test_images = 5
     test_images, test_labels, gt_annotation_rects = data.make_random_batch(num_test_images, my_anchor_grid, iou)

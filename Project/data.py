@@ -52,15 +52,15 @@ def make_random_batch(batch_size, anchor_grid, iou):
         img = np.array(Image.open(image_path))
         h, w = img.shape[:2]
         img_pad = np.pad(img, pad_width=((0, 320 - h), (0, 320 - w), (0, 0)), mode='constant', constant_values=0)
-        img_norm = img_pad.astype(np.float) / 128 - 1
+        img_norm = img_pad.astype(np.float) / 127.5 - 1
         images.append(img_norm)
 
         max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_annotation_rects)
-        indices = np.where(max_overlaps > iou)
-        boxes = np.zeros(anchor_grid.shape[:-1], dtype=np.int64)
-        boxes[indices] = 1
-        boxes = np.expand_dims(boxes, axis=-1)
-        labels.append(boxes)
+        labelgrid = (max_overlaps > iou).astype(np.int32)
+        #boxes = np.zeros(anchor_grid.shape[:-1], dtype=np.int64)
+        #boxes[indices] = 1
+        #boxes = np.expand_dims(boxes, axis=-1)
+        labels.append(labelgrid)
     return images, labels, gt_rects
 
 

@@ -2,7 +2,7 @@ import nodes
 
 
 def output(images_placeholder, num_scales, num_aspect_ratios, f_rows, f_cols):
-    net = nodes.mobile_net_v2(images_placeholder)
+    net = nodes.mobile_net_v2()(images_placeholder, training=False)
 
     convolution = nodes.convolution(input_tensor=net,
                                     scales=num_scales,

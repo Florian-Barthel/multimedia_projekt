@@ -5,6 +5,7 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
+from datetime import datetime
 import data
 import graph
 import anchorgrid
@@ -20,7 +21,9 @@ learning_rate = 0.20
 iterations = 10
 negative_percentage = 0.05
 
-logs_directory = './logs'
+# TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
+current_time = datetime.now()
+logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
 
 images_placeholder = tf.placeholder(tf.float32, shape=(None,
                                                        320,

@@ -57,9 +57,6 @@ def make_random_batch(batch_size, anchor_grid, iou):
 
         max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_annotation_rects)
         labelgrid = (max_overlaps > iou).astype(np.int32)
-        #boxes = np.zeros(anchor_grid.shape[:-1], dtype=np.int64)
-        #boxes[indices] = 1
-        #boxes = np.expand_dims(boxes, axis=-1)
         labels.append(labelgrid)
     return images, labels, gt_rects
 

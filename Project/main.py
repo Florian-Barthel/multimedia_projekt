@@ -2,7 +2,6 @@ from tqdm import tqdm
 import numpy as np
 from PIL import Image
 import os
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
@@ -72,8 +71,6 @@ with tf.Session(config=config) as sess:
     tf.summary.scalar('num_predicted', num_predicted)
     merged_summary = tf.summary.merge_all()
 
-    print('Session starting...')
-    # tf.compat.v1.global_variables_initializer().run()
     graph_vars = tf.global_variables()
     for var in tqdm(graph_vars):
         try:

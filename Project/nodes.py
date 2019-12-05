@@ -43,7 +43,6 @@ def calculate_loss(input_tensor, labels_tensor, negative_percentage):
     ones = tf.ones(tf.shape(labels_tensor))
     zeros = tf.zeros(tf.shape(labels_tensor))
     apply_percentage = tf.where(condition=random_weights < negative_percentage, x=ones, y=zeros)
-    #cast_weights_filtered = tf.cast(apply_percentage, tf.int32)
     weights_filtered_bool = tf.math.logical_or(x=tf.cast(apply_percentage, tf.bool),
                                                y=tf.cast(cast_labels, tf.bool))
     weights_filtered_int = tf.cast(weights_filtered_bool, tf.int32)

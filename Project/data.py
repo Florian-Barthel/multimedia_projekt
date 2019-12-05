@@ -4,6 +4,7 @@ import os
 import random
 from annotationRect import AnnotationRect
 import geometry
+from scipy.special import softmax
 
 folder_offset = 'dataset_mmp/'
 
@@ -62,13 +63,12 @@ def make_random_batch(batch_size, anchor_grid, iou):
 
 
 def convert_to_annotation_rects_output(anchor_grid, output):
-    remove_dimension = np.argmax(output, axis=-1)
-    filtered_indices = np.where(remove_dimension == 1)
-    max_boxes = anchor_grid[filtered_indices]
-
-    # * = tuple unpacking
-    annotated_boxes = [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
-    return annotated_boxes
+    calc_softmax = softmax(output, axis=-1)
+    foreground = np.delete(calc_softmax, [0], axis=-1)
+    filtered_indices = np.where(foreground > 0.7)
+    remove_last = filtered_indices[:4]
+    max_boxes = anchor_grid[remove_last]
+    return [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
 
 
 def convert_to_annotation_rects_label(anchor_grid, labels):

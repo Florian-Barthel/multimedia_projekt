@@ -17,15 +17,15 @@ url = tb.launch()
 f_map_rows = 10
 f_map_cols = 10
 scale_factor = 32.0
-scales = [70, 100, 140, 200]
-aspect_ratios = [0.5, 1.0, 2.0]
+scales = [50, 80, 100, 150]
+aspect_ratios = [1.0, 1.5, 2.0]
 batch_size = 30
 iou = 0.5
-learning_rate = 0.005
-iterations = 1000
-negative_percentage = 5
+learning_rate = 0.001
+iterations = 100
+negative_percentage = 15
 
-logs_directory = './logs/run5'
+logs_directory = './logs/run6'
 
 gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
 config = tf.ConfigProto(gpu_options=gpu_options)
@@ -103,7 +103,6 @@ with tf.Session(config=config) as sess:
     test_images, test_labels, gt_annotation_rects = data.make_random_batch(num_test_images, my_anchor_grid, iou)
     output = sess.run(calculate_output, feed_dict={images_placeholder: test_images,
                                                    labels_placeholder: test_labels})
-
     for i in range(num_test_images):
         img = Image.fromarray(((test_images[i] + 1) * 128).astype(np.uint8), 'RGB')
         data.draw_bounding_boxes(image=img,

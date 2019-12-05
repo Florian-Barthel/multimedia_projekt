@@ -19,13 +19,13 @@ f_map_cols = 10
 scale_factor = 32.0
 scales = [70, 100, 140, 200]
 aspect_ratios = [0.5, 1.0, 2.0]
-batch_size = 10
+batch_size = 30
 iou = 0.5
-learning_rate = 0.001
-iterations = 10
-negative_percentage = 4
+learning_rate = 0.005
+iterations = 1000
+negative_percentage = 5
 
-logs_directory = './logs/run4'
+logs_directory = './logs/run5'
 
 gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
 config = tf.ConfigProto(gpu_options=gpu_options)

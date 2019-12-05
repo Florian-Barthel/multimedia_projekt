@@ -58,6 +58,10 @@ def make_random_batch(batch_size, anchor_grid, iou):
 
         max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_annotation_rects)
         labelgrid = (max_overlaps > iou).astype(np.int32)
+
+        #boxes = np.zeros(anchor_grid.shape[:-1], dtype=np.int64)
+        #boxes[indices] = 1
+        #boxes = np.expand_dims(boxes, axis=-1)
         labels.append(labelgrid)
     return images, labels, gt_rects
 
@@ -79,3 +83,47 @@ def convert_to_annotation_rects_label(anchor_grid, labels):
     # * = tuple unpacking
     annotated_boxes = [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
     return annotated_boxes
+
+
+def get_batch(batch_size, anchor_grid, iou):
+    
+    dataset = tf.data.Dataset.list_files('./dataset_mmp/train/*.jpg')
+
+    def create_label(lines):
+        rects = []
+        lines_decoded = str(lines.decode("utf-8")).split("\n")
+        for line in lines_decoded:
+            if(line):
+                tokens = line.split(' ')
+                annotation_rect = AnnotationRect(int(tokens[0]), int(tokens[1]), int(tokens[2]), int(tokens[3]))
+                rects.append(annotation_rect)
+
+        max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, rects)
+        max_overlaps = (max_overlaps > iou).astype(np.int32)
+        return max_overlaps
+
+
+    def parse_image(file_name):
+        annotation_file = tf.io.read_file(tf.strings.split(file_name, '.jpg', result_type='RaggedTensor')[0] + '.gt_data.txt')
+        label = tf.py_func(create_label, [annotation_file], [tf.int32])
+
+        image = tf.io.read_file(file_name)
+        image = tf.image.decode_jpeg(image)
+        h = tf.shape(image)[0]
+        w = tf.shape(image)[1]
+        image = tf.pad(image, [[0, 320 - h], [0, 320 - w], [0, 0]], mode='CONSTANT', constant_values=0)
+        # Normalize
+        image = tf.cast(image, tf.float32) / 127.5 - 1
+
+        return image, label[0]
+
+
+    dataset = dataset.map(parse_image)
+
+    batch = dataset.batch(batch_size)
+
+    iterator = batch.make_one_shot_iterator()
+
+    images, labels = iterator.get_next()
+
+    return images, labels

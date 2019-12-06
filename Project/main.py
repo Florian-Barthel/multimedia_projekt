@@ -118,4 +118,6 @@ with tf.Session(config=config) as sess:
         data.draw_bounding_boxes(image=img,
                                  annotation_rects=gt_annotation_rects[i],
                                  color=(100, 100, 255))
+        if not os.path.exists('test_images'):
+            os.makedirs('test_images')
         img.save('test_images/max_overlap_boxes_{}.jpg'.format(i))

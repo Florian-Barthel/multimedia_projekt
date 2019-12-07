@@ -1,9 +1,11 @@
 from scipy.special import softmax
 import numpy as np
 from annotationRect import AnnotationRect
-
 import geometry
 
+detections_path = 'eval_script/detections.txt'
+
+# Non-maximum-suppression with default threshold of 0.3 (IoU)
 # Input: dict of boxes AnnotationRect:Score, (optional) IoU threshold
 # Output: dict of resulting AnnotationRect:Score boxes after suppression
 def non_maximum_suppression(boxes, threshold=0.3):
@@ -19,6 +21,7 @@ def non_maximum_suppression(boxes, threshold=0.3):
             if geometry.iou(max_box, b) > threshold:
                 boxes.pop(b)
     return output
+
 
 # Creating dict of boxes AnnotationRect:Score from the output and the anchor grid
 def create_boxes_dict(data, anchor_grid, fg_threshold=0.7):
@@ -43,3 +46,20 @@ def create_boxes_dict(data, anchor_grid, fg_threshold=0.7):
     for i in range(len(boxes)):
         boxes_dict[boxes[i]] = scores[i]
     return boxes_dict
+
+
+# Save detections in text file; each line in format:
+# <Image name> <class_id> <x1> <y1> <x2> <y2> <score>
+def save_boxes(boxes, image_path):
+    file = open(detections_path, "a+")
+    for b in boxes:
+        file.write("{name} 0 {x1} {y1} {x2} {y2} {score}\n".format(name=image_path, x1=b.x1, y1=b.y1, x2=b.x2, y2=b.y2,
+                                                                   score=boxes[b]))
+    file.close()
+
+# Clears the detections file located at detections_path
+def clear_detections():
+    open(detections_path, "w+").close()
+
+# Ensures old detections are cleared when running program
+clear_detections()

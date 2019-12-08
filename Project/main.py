@@ -2,9 +2,6 @@ from tqdm import tqdm
 import numpy as np
 from PIL import Image
 import os
-
-import evaluation
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
@@ -12,6 +9,7 @@ from datetime import datetime
 import data
 import graph
 import anchorgrid
+import evaluation
 from tensorboard import program
 
 tb = program.TensorBoard()
@@ -106,8 +104,7 @@ with tf.Session(config=config) as sess:
         log_writer.add_summary(summary, i)
 
     num_test_images = 5
-    test_images, test_labels, gt_annotation_rects = data.make_random_batch(num_test_images, my_anchor_grid, iou)
-                                                                                       iou)
+    test_images, test_labels, gt_annotation_rects, test_paths = data.make_random_batch(num_test_images, my_anchor_grid, iou)
     output = sess.run(calculate_output, feed_dict={images_placeholder: test_images,
                                                    labels_placeholder: test_labels})
     for i in range(num_test_images):

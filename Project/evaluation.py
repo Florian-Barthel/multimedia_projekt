@@ -3,6 +3,10 @@ import numpy as np
 from annotationRect import AnnotationRect
 import geometry
 
+# Preparing data for the evaluation script
+# The script can be run from the Project directory by invoking:
+# python eval_script\eval_detections.py --detection eval_script/detections.txt --dset_basedir dataset_mmp
+
 detections_path = 'eval_script/detections.txt'
 
 # Non-maximum-suppression with default threshold of 0.3 (IoU)
@@ -53,7 +57,7 @@ def create_boxes_dict(data, anchor_grid, fg_threshold=0.7):
 def save_boxes(boxes, image_path):
     file = open(detections_path, "a+")
     for b in boxes:
-        file.write("{name} 0 {x1} {y1} {x2} {y2} {score}\n".format(name=image_path, x1=b.x1, y1=b.y1, x2=b.x2, y2=b.y2,
+        file.write("{name} 0 {x1} {y1} {x2} {y2} {score}\n".format(name=image_path.split("/")[-1], x1=b.x1, y1=b.y1, x2=b.x2, y2=b.y2,
                                                                    score=boxes[b]))
     file.close()
 
@@ -61,5 +65,11 @@ def save_boxes(boxes, image_path):
 def clear_detections():
     open(detections_path, "w+").close()
 
-# Ensures old detections are cleared when running program
-clear_detections()
+# Prepares detections from the output and anchor_grid applying non-maximum-suppression
+# and saving the resulting detections to disk
+def prepare_detections(output, anchor_grid, image_paths, num_test_images, nms_threshold=0.3, fg_threshold=0.7):
+    clear_detections()
+    for i in range(num_test_images):
+        boxes_dict = create_boxes_dict(output[i], anchor_grid, fg_threshold)
+        nms = non_maximum_suppression(boxes_dict, nms_threshold)
+        save_boxes(nms, image_paths[i])

@@ -2,6 +2,9 @@ from tqdm import tqdm
 import numpy as np
 from PIL import Image
 import os
+
+import evaluation
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
@@ -86,9 +89,9 @@ with tf.Session(config=config) as sess:
     log_writer = tf.summary.FileWriter(logs_directory, sess.graph)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
-        batch_images, batch_labels, _ = data.make_random_batch(batch_size=batch_size,
-                                                               anchor_grid=my_anchor_grid,
-                                                               iou=iou)
+        batch_images, batch_labels, _, test_paths = data.make_random_batch(batch_size=batch_size,
+                                                                           anchor_grid=my_anchor_grid,
+                                                                           iou=iou)
 
         loss, labels, random, weights, predicted, _, summary = sess.run(
             [calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary],
@@ -104,6 +107,7 @@ with tf.Session(config=config) as sess:
 
     num_test_images = 5
     test_images, test_labels, gt_annotation_rects = data.make_random_batch(num_test_images, my_anchor_grid, iou)
+                                                                                       iou)
     output = sess.run(calculate_output, feed_dict={images_placeholder: test_images,
                                                    labels_placeholder: test_labels})
     for i in range(num_test_images):
@@ -121,3 +125,6 @@ with tf.Session(config=config) as sess:
         if not os.path.exists('test_images'):
             os.makedirs('test_images')
         img.save('test_images/max_overlap_boxes_{}.jpg'.format(i))
+    # Saving detections for evaluation purposes
+    evaluation.prepare_detections(output, my_anchor_grid, test_paths, num_test_images)
+

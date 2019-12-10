@@ -24,7 +24,7 @@ aspect_ratios = [1.0, 1.5, 2.0]
 batch_size = 30
 iou = 0.5
 learning_rate = 0.001
-iterations = 100
+iterations = 10
 negative_percentage = 15
 
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
@@ -103,7 +103,7 @@ with tf.Session(config=config) as sess:
         # TensorBoard scalar summary
         log_writer.add_summary(summary, i)
 
-    num_test_images = 5
+    num_test_images = 1543
     test_images, test_labels, gt_annotation_rects, test_paths = data.make_random_batch(num_test_images, my_anchor_grid, iou)
     output = sess.run(calculate_output, feed_dict={images_placeholder: test_images,
                                                    labels_placeholder: test_labels})

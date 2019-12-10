@@ -3,19 +3,15 @@ import random
 from annotationRect import AnnotationRect
 import geometry
 import tensorflow as tf
-
-
-crop_scales = list(np.arange(0.8, 1.0, 0.1))
-crop_boxes = np.zeros((len(crop_scales), 4))
-
-for i, scale in enumerate(crop_scales):
-    x1 = y1 = 0.5 - (0.5 * scale)
-    x2 = y2 = 0.5 + (0.5 * scale)
-    crop_boxes[i] = [x1, y1, x2, y2]
-
+from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import array_ops
+from tensorflow.python.framework import ops
 
 image_height = 320
 image_width = 320
+
+crop_factor = 0.2
+augmentation_factor = 0.15
 
 # returns images of shape [batch_size, 2, 320, 320, 3] and labels of shape [batch_size, f_map_rows, f_map_cols, len(scales), len(aspect_ratios)]
 # [batch_size, 0] are raw images, [batch_size, 1] are ground truth annotated images
@@ -84,11 +80,29 @@ def create(path, anchor_grid, iou):
 
     # todo
     def random_crop(image, bb_images):
-        rand_crop_index = tf.random_uniform(shape=[], minval=0, maxval=len(crop_scales), dtype=tf.int32)
-        image_crops = tf.image.crop_and_resize([image], boxes=crop_boxes, box_ind=np.zeros(len(crop_scales)), crop_size=[image_height, image_width])
-        bb_images_crops = tf.image.crop_and_resize(bb_images, boxes=crop_boxes, box_ind=np.zeros(len(crop_scales)), crop_size=[image_height, image_width])
-        return image_crops[rand_crop_index], bb_images_crops[rand_crop_index]
+        image_dim = tf.constant([image_height, image_width], dtype=tf.int32)
+        
+        rand_hw_start = tf.random.uniform([2], minval=0, maxval=crop_factor, dtype=tf.float32)
+        rand_hw_size = tf.random.uniform([2], minval=(1.0 - crop_factor), maxval=1.0, dtype=tf.float32) - rand_hw_start
 
+        rand_hw_start = tf.cast(rand_hw_start * tf.cast(image_dim, dtype=tf.float32), dtype=tf.int32)
+        rand_hw_size = tf.cast(rand_hw_size * tf.cast(image_dim, dtype=tf.float32), dtype=tf.int32)
+
+        rand_image_start = tf.concat([rand_hw_start, [tf.constant(0)]], 0)
+        rand_image_size = tf.concat([rand_hw_size, [tf.shape(image)[-1]]], 0)
+        image = tf.slice(image, rand_image_start, rand_image_size)
+        image = tf.image.resize_images(image, image_dim)
+
+        rand_bb_image_start = tf.concat([[tf.constant(0)], rand_hw_start], 0)
+        rand_bb_image_size = tf.concat([[tf.shape(bb_images)[0]], rand_hw_size], 0)
+
+        rand_bb_image_start = tf.concat([rand_bb_image_start, [tf.constant(0)]], 0)
+        rand_bb_image_size = tf.concat([rand_bb_image_size, [tf.shape(bb_images)[-1]]], 0)
+
+        bb_images = tf.slice(bb_images, rand_bb_image_start, rand_bb_image_size)
+        bb_images = tf.image.resize_images(bb_images, image_dim)
+        
+        return image, bb_images
 
     def random_flip(image, bb_images):
         flip_vertically = random.choice([True, False])
@@ -122,13 +136,14 @@ def create(path, anchor_grid, iou):
         augmentations = [random_rotate,
                          random_flip,
                          random_quality,
-                         random_color]
+                         random_color,
+                         random_crop]
 
         def no_augment(arg1, arg2):
             return arg1, arg2
         
         for augmentation in augmentations:
-            image, bb_images = tf.cond(tf.random_uniform([], 0.0, 1.0) > 0.75, lambda: augmentation(image, bb_images), lambda: no_augment(image, bb_images))
+            image, bb_images = tf.cond(tf.random_uniform([], 0.0, 1.0) < augmentation_factor, lambda: augmentation(image, bb_images), lambda: no_augment(image, bb_images))
 
         return image, bb_images
 

@@ -17,9 +17,9 @@ for i, scale in enumerate(crop_scales):
 image_height = 320
 image_width = 320
 
-# returns images of shape [batch_size, 320, 320, 3] and labels of shape [batch_size, f_map_rows, f_map_cols, len(scales), len(aspect_ratios)]
-# if include_annotated_gt_image is set to True images has shape images of shape [batch_size, 2, 320, 320, 3], one orignial and one gt annotaded image
-def create(path, anchor_grid, iou, include_annotated_gts=False):
+# returns images of shape [batch_size, 2, 320, 320, 3] and labels of shape [batch_size, f_map_rows, f_map_cols, len(scales), len(aspect_ratios)]
+# [batch_size, 0] are raw images, [batch_size, 1] are ground truth annotated images
+def create(path, anchor_grid, iou):
     
     dataset = tf.data.Dataset.list_files(path+'/*.jpg')
 
@@ -146,13 +146,9 @@ def create(path, anchor_grid, iou, include_annotated_gts=False):
 
         image_annotated_gt = tf.squeeze(tf.image.draw_bounding_boxes(tf.expand_dims(image, 0), tf.expand_dims(gt_boxes, 0)))
 
-        if include_annotated_gts == True:
-            #return tf.stack([image, image_annotated_gt]), iou_boxes
-            return image_annotated_gt, iou_boxes
-
-        return image, iou_boxes
+        return tf.stack([image, image_annotated_gt]), iou_boxes
 
 
-    dataset = dataset.map(get_image_label_and_gt)
+    dataset = dataset.map(get_image_label_and_gt).cache()
 
     return dataset

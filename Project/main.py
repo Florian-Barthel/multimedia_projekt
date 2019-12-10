@@ -37,31 +37,34 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
                                      scales=scales,
                                      aspect_ratios=aspect_ratios)
 
-training_dataset = dataSet.create("./dataset_mmp/train", anchor_grid, iou).batch(batch_size)
-test_dataset = dataSet.create("./dataset_mmp/test", anchor_grid, iou, include_annotated_gts=True).batch(batch_size)
+train_dataset = dataSet.create("./dataset_mmp/train", anchor_grid, iou).batch(batch_size)
+test_dataset = dataSet.create("./dataset_mmp/test", anchor_grid, iou).batch(batch_size)
 
 handle = tf.placeholder(tf.string, shape=[])
-iterator = tf.data.Iterator.from_string_handle(handle, training_dataset.output_types, training_dataset.output_shapes)
+iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
 
-training_iterator = training_dataset.make_one_shot_iterator()
+train_iterator = train_dataset.make_one_shot_iterator()
 test_iterator = test_dataset.make_one_shot_iterator()
 
 next_element = iterator.get_next()
 
 with tf.Session(config=config) as sess:
-    training_handle = sess.run(training_iterator.string_handle())
+    train_handle = sess.run(train_iterator.string_handle())
     test_handle = sess.run(test_iterator.string_handle())
 
-    images, labels = next_element
+    images_tensor, labels_tensor = next_element
 
-    calculate_output = graph.output(images=images,
+    #use only raw images!
+    no_gts_images_tensor = images_tensor[:,0]
+
+    calculate_output = graph.output(images=no_gts_images_tensor,
                                     num_scales=len(scales),
                                     num_aspect_ratios=len(aspect_ratios),
                                     f_rows=f_map_rows,
                                     f_cols=f_map_cols)
 
     calculate_loss, num_labels, num_random, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
-                                                                                    labels=labels,
+                                                                                    labels=labels_tensor,
                                                                                     negative_percentage=negative_percentage)
     
     def optimize(my_loss):
@@ -89,7 +92,7 @@ with tf.Session(config=config) as sess:
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
 
-        loss, labels, random, weights, predicted, _, summary = sess.run([calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: training_handle})
+        loss, labels, random, weights, predicted, _, summary = sess.run([calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: train_handle})
 
         description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
             labels) + ' num_random: ' + str(random) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
@@ -99,17 +102,20 @@ with tf.Session(config=config) as sess:
         log_writer.add_summary(summary, i)
 
 
-    images_result, output_result = sess.run([images, calculate_output], feed_dict={handle: test_handle})
+
+    images_result, labels_result, output_result = sess.run([images_tensor, labels_tensor, calculate_output], feed_dict={handle: test_handle})
+    #annotated_images
+    images_result = images_result[:,1]
 
     for i in range(np.shape(images_result)[0]):
         image = Image.fromarray(((images_result[i] + 1) * 127.5).astype(np.uint8), 'RGB')
         image.resize((320*4, 320*4), Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))
 
-        # dataUtil.draw_bounding_boxes(image=image,
-        #                      annotation_rects=dataUtil.convert_to_annotation_rects_label(anchor_grid, labels_result[i]),
-        #                      color=(0, 255, 255))
+        dataUtil.draw_bounding_boxes(image=image,
+                             annotation_rects=dataUtil.convert_to_annotation_rects_label(anchor_grid, labels_result[i]),
+                             color=(0, 255, 255))
 
-        # image.resize((320*4, 320*4), Image.ANTIALIAS).save('test_images/{}_labels.jpg'.format(i))
+        image.resize((320*4, 320*4), Image.ANTIALIAS).save('test_images/{}_labels.jpg'.format(i))
 
         dataUtil.draw_bounding_boxes(image=image,
                                      annotation_rects=dataUtil.convert_to_annotation_rects_output(anchor_grid, output_result[i]),

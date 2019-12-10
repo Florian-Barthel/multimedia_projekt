@@ -7,8 +7,10 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
 import dataSet
 import dataUtil
+from datetime import datetime
 import graph
 import anchorgrid
+import evaluation
 from tensorboard import program
 
 tb = program.TensorBoard()
@@ -20,13 +22,16 @@ f_map_cols = 10
 scale_factor = 32.0
 scales = [50, 80, 100, 150]
 aspect_ratios = [1.0, 1.5, 2.0]
-batch_size = 30
+batch_size = 10
 iou = 0.5
 learning_rate = 0.001
-iterations = 20
+iterations = 1
+
 negative_percentage = 15
 
-logs_directory = './logs/run6'
+# TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
+current_time = datetime.now()
+logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
 
 gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
 config = tf.ConfigProto(gpu_options=gpu_options)
@@ -88,7 +93,7 @@ with tf.Session(config=config) as sess:
             sess.run(tf.initialize_variables([var]))
 
     # TensorBoard graph summary
-    log_writer = tf.summary.FileWriter(logs_directory, sess.graph)
+    log_writer = tf.summary.FileWriter(logs_directory, sess.graph, flush_secs=5)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
 
@@ -122,3 +127,6 @@ with tf.Session(config=config) as sess:
                                      color=(0, 0, 255))
         
         image.resize((320*4, 320*4), Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
+
+    # Saving detections for evaluation purposes
+    # evaluation.prepare_detections(output_result, anchor_grid, test_paths, batch_size)

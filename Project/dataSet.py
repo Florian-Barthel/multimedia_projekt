@@ -78,7 +78,6 @@ def create(path, anchor_grid, iou):
         return rotated_image, rotated_bb_images
 
 
-    # todo
     def random_crop(image, bb_images):
         image_dim = tf.constant([image_height, image_width], dtype=tf.int32)
         

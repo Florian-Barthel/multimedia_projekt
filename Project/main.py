@@ -39,8 +39,6 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
 
 with tf.Session(config=config) as sess:
 
-    images, labels = data.get_batch(batch_size, anchor_grid, iou)
-
     calculate_output = graph.output(images=images,
                                     num_scales=len(scales),
                                     num_aspect_ratios=len(aspect_ratios),
@@ -87,7 +85,6 @@ with tf.Session(config=config) as sess:
         progress_bar.set_description(description, refresh=True)
         # TensorBoard scalar summary
         log_writer.add_summary(summary, i)
-
 
 
     num_test_images = 5

@@ -22,10 +22,10 @@ f_map_cols = 10
 scale_factor = 32.0
 scales = [50, 80, 100, 150]
 aspect_ratios = [1.0, 1.5, 2.0]
-batch_size = 10
+batch_size = 30
 iou = 0.5
 learning_rate = 0.001
-iterations = 1
+iterations = 10
 
 negative_percentage = 15
 
@@ -112,6 +112,7 @@ with tf.Session(config=config) as sess:
     #annotated_images
     images_result = images_result[:,1]
 
+    test_paths = []
     for i in range(np.shape(images_result)[0]):
         image = Image.fromarray(((images_result[i] + 1) * 127.5).astype(np.uint8), 'RGB')
         image.resize((320*4, 320*4), Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))
@@ -127,6 +128,7 @@ with tf.Session(config=config) as sess:
                                      color=(0, 0, 255))
         
         image.resize((320*4, 320*4), Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
+        test_paths.append('test_images/{}_estimates.jpg'.format(i))
 
     # Saving detections for evaluation purposes
-    # evaluation.prepare_detections(output_result, anchor_grid, test_paths, batch_size)
+    evaluation.prepare_detections(output_result, anchor_grid, test_paths, batch_size)

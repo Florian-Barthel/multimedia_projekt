@@ -5,7 +5,8 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
-import data
+import dataSet
+import dataUtil
 import graph
 import anchorgrid
 from tensorboard import program
@@ -39,11 +40,46 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
 
 with tf.Session(config=config) as sess:
 
+<<<<<<< HEAD
     calculate_output = graph.output(images=images,
                                     num_scales=len(scales),
                                     num_aspect_ratios=len(aspect_ratios),
                                     f_rows=f_map_rows,
                                     f_cols=f_map_cols)
+=======
+    input_and_gt_images, labels = dataSet.get_batch(batch_size, anchor_grid, iou, include_annotated_gt_image=True)
+
+    input_and_gt_images, labels = sess.run([input_and_gt_images, labels])
+
+
+    for i in range(np.shape(input_and_gt_images)[0]):
+
+
+        image = Image.fromarray(((input_and_gt_images[i][1] + 1) * 127.5).astype(np.uint8), 'RGB')
+        dataUtil.draw_bounding_boxes(image=image,
+                                 annotation_rects=dataUtil.convert_to_annotation_rects_label(anchor_grid, labels[i]),
+                                 color=(255, 0, 0))
+
+        
+        image = image.resize((320*4, 320*4), Image.ANTIALIAS)
+        image.save('test_images/max_overlap_boxes_{}.jpg'.format(i))
+
+    # print(np.shape(images))
+    # print(np.shape(labels))
+
+    # img = Image.fromarray(((np.squeeze(labels[0], axis=-1) + 1) * 127.5).astype(np.uint8), 'L')
+    # img.save('testl.jpg')
+
+    # img = Image.fromarray(((images[0] + 1) * 127.5).astype(np.uint8), 'RGB')
+    # img.save('testi.jpg')
+
+
+    # calculate_output = graph.output(images=images,
+    #                                 num_scales=len(scales),
+    #                                 num_aspect_ratios=len(aspect_ratios),
+    #                                 f_rows=f_map_rows,
+    #                                 f_cols=f_map_cols)
+>>>>>>> chore: split data files
 
     calculate_loss, num_labels, num_random, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
                                                                                     labels=labels,

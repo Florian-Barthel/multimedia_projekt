@@ -2,7 +2,7 @@ import numpy as np
 import random
 from annotationRect import AnnotationRect
 import geometry
-from scipy.special import softmax
+import tensorflow as tf
 
 
 crop_scales = list(np.arange(0.8, 1.0, 0.1))
@@ -19,9 +19,9 @@ image_width = 320
 
 # returns images of shape [batch_size, 320, 320, 3] and labels of shape [batch_size, f_map_rows, f_map_cols, len(scales), len(aspect_ratios)]
 # if include_annotated_gt_image is set to True images has shape images of shape [batch_size, 2, 320, 320, 3], one orignial and one gt annotaded image
-def get_batch(batch_size, anchor_grid, iou, include_annotated_gt_image=False):
+def create(path, anchor_grid, iou, include_annotated_gts=False):
     
-    dataset = tf.data.Dataset.list_files('./dataset_mmp/train/*.jpg')
+    dataset = tf.data.Dataset.list_files(path+'/*.jpg')
 
     def create_label_array(lines):
         rects = []
@@ -146,18 +146,13 @@ def get_batch(batch_size, anchor_grid, iou, include_annotated_gt_image=False):
 
         image_annotated_gt = tf.squeeze(tf.image.draw_bounding_boxes(tf.expand_dims(image, 0), tf.expand_dims(gt_boxes, 0)))
 
-        if include_annotated_gt_image == True:
-            return tf.stack([image, image_annotated_gt]), iou_boxes
+        if include_annotated_gts == True:
+            #return tf.stack([image, image_annotated_gt]), iou_boxes
+            return image_annotated_gt, iou_boxes
 
         return image, iou_boxes
 
 
     dataset = dataset.map(get_image_label_and_gt)
 
-    batch = dataset.batch(batch_size)
-
-    iterator = batch.make_one_shot_iterator()
-
-    images, labels = iterator.get_next()
-
-    return images, labels
+    return dataset

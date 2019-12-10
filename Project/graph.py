@@ -1,5 +1,5 @@
 import nodes
-
+import tensorflow as tf
 
 def output(images, num_scales, num_aspect_ratios, f_rows, f_cols):
     net = nodes.mobile_net_v2()(images, training=False)

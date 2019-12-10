@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse as ap
 
-import eval_script.flickr_io as fio
+import flickr_io as fio
 
 
 def remove_difficult(img2gts, img2dets):

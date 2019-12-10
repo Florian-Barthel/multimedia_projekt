@@ -1,11 +1,15 @@
-from annotationRect import AnnotationRect
+from PIL import ImageDraw, Image
+import numpy as np
 import os
-from PIL import ImageDraw
+import random
+from annotationRect import AnnotationRect
+import geometry
+from scipy.special import softmax
 
-folder_offset = 'src/dataset_mmp/'
+folder_offset = 'dataset_mmp/'
 
 
-def convert_file_annotation_rect(location):
+def __convert_file_annotation_rect(location):
     file = open(location, 'r')
     if file.mode == 'r':
         lines = file.readlines()
@@ -22,7 +26,7 @@ def get_dict_from_folder(folder):
         if file.endswith(".txt"):
             location = folder_offset + folder + '/' + file
             key = folder_offset + folder + '/' + file.split('.', 1)[0] + '.jpg'
-            result_dict[key] = convert_file_annotation_rect(location)
+            result_dict[key] = __convert_file_annotation_rect(location)
     return result_dict
 
 
@@ -35,3 +39,44 @@ def draw_bounding_boxes(image, annotation_rects, color):
             width=3
         )
     return image
+
+
+def make_random_batch(batch_size, anchor_grid, iou):
+    items = get_dict_from_folder('train')
+    images = []
+    labels = []
+    gt_rects = []
+    image_paths = [None] * batch_size
+    for i in range(batch_size):
+        image_paths[i], gt_annotation_rects = random.choice(list(items.items()))
+        gt_rects.append(gt_annotation_rects)
+
+        img = np.array(Image.open(image_paths[i]))
+        h, w = img.shape[:2]
+        img_pad = np.pad(img, pad_width=((0, 320 - h), (0, 320 - w), (0, 0)), mode='constant', constant_values=0)
+        img_norm = img_pad.astype(np.float) / 127.5 - 1
+        images.append(img_norm)
+
+        max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_annotation_rects)
+        labelgrid = (max_overlaps > iou).astype(np.int32)
+        labels.append(labelgrid)
+    return images, labels, gt_rects, image_paths
+
+
+def convert_to_annotation_rects_output(anchor_grid, output):
+    calc_softmax = softmax(output, axis=-1)
+    foreground = np.delete(calc_softmax, [0], axis=-1)
+    filtered_indices = np.where(foreground > 0.7)
+    remove_last = filtered_indices[:4]
+    max_boxes = anchor_grid[remove_last]
+    return [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
+
+
+def convert_to_annotation_rects_label(anchor_grid, labels):
+    filtered_indices = np.where(labels == 1)
+    remove_last = filtered_indices[:4]
+    max_boxes = anchor_grid[remove_last]
+
+    # * = tuple unpacking
+    annotated_boxes = [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
+    return annotated_boxes

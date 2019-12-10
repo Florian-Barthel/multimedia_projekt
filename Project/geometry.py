@@ -23,9 +23,9 @@ def anchor_max_gt_overlaps(anchor_grid, gts):
         for x in range(anchor_grid.shape[1]):
             for s in range(anchor_grid.shape[2]):
                 for a in range(anchor_grid.shape[3]):
-                    anchor_box = AnnotationRect(anchor_grid[x, y, s, a, 0],
-                                                anchor_grid[x, y, s, a, 1],
-                                                anchor_grid[x, y, s, a, 2],
-                                                anchor_grid[x, y, s, a, 3])
-                    output[x][y][s][a] = max([iou(anchor_box, gt) for gt in gts])
+                    anchor_box = AnnotationRect(anchor_grid[y, x, s, a, 0],
+                                                anchor_grid[y, x, s, a, 1],
+                                                anchor_grid[y, x, s, a, 2],
+                                                anchor_grid[y, x, s, a, 3])
+                    output[y, x, s, a] = max([iou(anchor_box, gt) for gt in gts])
     return output

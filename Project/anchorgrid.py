@@ -1,19 +1,19 @@
 import numpy as np
 
 
-def anchor_grid(fmap_cols, fmap_rows, scale_factor, scales, aspect_ratios):
+def anchor_grid(f_map_rows, f_map_cols, scale_factor, scales, aspect_ratios):
     scales_size = np.shape(scales)[0]
     aspect_ratios_size = np.shape(aspect_ratios)[0]
 
-    output = np.ones((fmap_rows,
-                      fmap_cols,
+    output = np.ones((f_map_rows,
+                      f_map_cols,
                       scales_size,
                       aspect_ratios_size,
                       4)
                      )
 
-    for y in range(fmap_rows):
-        for x in range(fmap_cols):
+    for y in range(f_map_rows):
+        for x in range(f_map_cols):
             for s in range(scales_size):
                 for r in range(aspect_ratios_size):
                     scale = scales[s]

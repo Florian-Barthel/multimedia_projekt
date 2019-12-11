@@ -11,6 +11,7 @@ from datetime import datetime
 import graph
 import anchorgrid
 import evaluation
+import visualize
 from tensorboard import program
 
 tb = program.TensorBoard()
@@ -106,29 +107,12 @@ with tf.Session(config=config) as sess:
         # TensorBoard scalar summary
         log_writer.add_summary(summary, i)
 
-
-
-    images_result, labels_result, output_result = sess.run([images_tensor, labels_tensor, calculate_output], feed_dict={handle: test_handle})
-    #annotated_images
-    images_result = images_result[:,1]
-
-    test_paths = []
-    for i in range(np.shape(images_result)[0]):
-        image = Image.fromarray(((images_result[i] + 1) * 127.5).astype(np.uint8), 'RGB')
-        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))
-
-        dataUtil.draw_bounding_boxes(image=image,
-                             annotation_rects=dataUtil.convert_to_annotation_rects_label(anchor_grid, labels_result[i]),
-                             color=(0, 255, 255))
-
-        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_labels.jpg'.format(i))
-
-        dataUtil.draw_bounding_boxes(image=image,
-                                     annotation_rects=dataUtil.convert_to_annotation_rects_output(anchor_grid, output_result[i]),
-                                     color=(0, 0, 255))
-        
-        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
-        test_paths.append('test_images/{}_estimates.jpg'.format(i))
+    num_test_images = 50
+    test_images, test_labels, gt_annotation_rects, test_paths = data.make_random_batch(num_test_images, my_anchor_grid, iou)
+    output = sess.run(calculate_output, feed_dict={images_placeholder: test_images,
+                                                   labels_placeholder: test_labels})
 
     # Saving detections for evaluation purposes
-    evaluation.prepare_detections(output_result, anchor_grid, test_paths, batch_size)
+    nms_boxes = evaluation.prepare_detections(output, my_anchor_grid, test_paths, num_test_images)
+    # Drawing first 10 images before and after non-maximum-suppression
+    visualize.draw_images(test_images, test_labels, output, my_anchor_grid, gt_annotation_rects, nms_boxes, num_test_images)

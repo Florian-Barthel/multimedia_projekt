@@ -2,10 +2,16 @@ import os
 import numpy as np
 from PIL import Image
 import data
+import datetime
+from tensorboard import program
 
 image_path = 'test_images'
 max_drawn_images = 10
 fg_threshold = 0.7
+
+# TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
+current_time = datetime.now()
+logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
 
 def draw_images(test_images, test_labels, output, anchor_grid, gt_annotation_rects, nms_boxes, num_test_images):
     if not os.path.exists(image_path):
@@ -43,3 +49,9 @@ def draw_images(test_images, test_labels, output, anchor_grid, gt_annotation_rec
                                  annotation_rects=gt_annotation_rects[i],
                                  color=(100, 100, 255))
         img.save(image_path + '/nms_overlap_boxes_{}.jpg'.format(i))
+
+
+def run_tensorboard():
+    tb = program.TensorBoard()
+    tb.configure(argv=[None, '--logdir=logs'])
+    url = tb.launch()

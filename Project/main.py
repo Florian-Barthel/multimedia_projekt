@@ -1,22 +1,16 @@
 from tqdm import tqdm
 import numpy as np
-from PIL import Image
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
 import dataSet
 import dataUtil
-from datetime import datetime
+import data
 import graph
 import anchorgrid
 import evaluation
 import visualize
-from tensorboard import program
-
-tb = program.TensorBoard()
-tb.configure(argv=[None, '--logdir=logs'])
-url = tb.launch()
 
 f_map_rows = 10
 f_map_cols = 10
@@ -30,9 +24,7 @@ iterations = 10
 
 negative_percentage = 15
 
-# TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
-current_time = datetime.now()
-logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
+visualize.run_tensorboard()
 
 gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
 config = tf.ConfigProto(gpu_options=gpu_options)
@@ -94,9 +86,13 @@ with tf.Session(config=config) as sess:
             sess.run(tf.initialize_variables([var]))
 
     # TensorBoard graph summary
-    log_writer = tf.summary.FileWriter(logs_directory, sess.graph, flush_secs=5)
+
+    log_writer = tf.summary.FileWriter(visualize.logs_directory, sess.graph, flush_secs=5)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
+        batch_images, batch_labels, _, _ = data.make_random_batch(batch_size=batch_size,
+                                                                  anchor_grid=anchor_grid,
+                                                                  iou=iou)
 
         loss, labels, random, weights, predicted, _, summary = sess.run([calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: train_handle})
 
@@ -108,11 +104,13 @@ with tf.Session(config=config) as sess:
         log_writer.add_summary(summary, i)
 
     num_test_images = 50
-    test_images, test_labels, gt_annotation_rects, test_paths = data.make_random_batch(num_test_images, my_anchor_grid, iou)
+    test_images, test_labels, gt_annotation_rects, test_paths = data.make_random_batch(num_test_images, anchor_grid,
+                                                                                       iou)
     output = sess.run(calculate_output, feed_dict={images_placeholder: test_images,
                                                    labels_placeholder: test_labels})
 
     # Saving detections for evaluation purposes
-    nms_boxes = evaluation.prepare_detections(output, my_anchor_grid, test_paths, num_test_images)
+    nms_boxes = evaluation.prepare_detections(output, anchor_grid, test_paths, num_test_images)
     # Drawing first 10 images before and after non-maximum-suppression
-    visualize.draw_images(test_images, test_labels, output, my_anchor_grid, gt_annotation_rects, nms_boxes, num_test_images)
+    visualize.draw_images(test_images, test_labels, output, anchor_grid, gt_annotation_rects, nms_boxes, num_test_images)
+

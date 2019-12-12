@@ -115,19 +115,19 @@ with tf.Session(config=config) as sess:
     test_paths = []
     for i in range(np.shape(images_result)[0]):
         image = Image.fromarray(((images_result[i] + 1) * 127.5).astype(np.uint8), 'RGB')
-        image.resize((320*4, 320*4), Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))
+        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))
 
         dataUtil.draw_bounding_boxes(image=image,
                              annotation_rects=dataUtil.convert_to_annotation_rects_label(anchor_grid, labels_result[i]),
                              color=(0, 255, 255))
 
-        image.resize((320*4, 320*4), Image.ANTIALIAS).save('test_images/{}_labels.jpg'.format(i))
+        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_labels.jpg'.format(i))
 
         dataUtil.draw_bounding_boxes(image=image,
                                      annotation_rects=dataUtil.convert_to_annotation_rects_output(anchor_grid, output_result[i]),
                                      color=(0, 0, 255))
         
-        image.resize((320*4, 320*4), Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
+        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
         test_paths.append('test_images/{}_estimates.jpg'.format(i))
 
     # Saving detections for evaluation purposes

@@ -2,7 +2,7 @@ import os
 import numpy as np
 from PIL import Image
 import data
-import datetime
+from datetime import datetime
 from tensorboard import program
 
 image_path = 'test_images'

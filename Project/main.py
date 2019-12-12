@@ -76,6 +76,7 @@ with tf.Session(config=config) as sess:
     tf.summary.scalar('loss', calculate_loss)
     tf.summary.scalar('num_predicted', num_predicted)
     merged_summary = tf.summary.merge_all()
+    log_writer = tf.summary.FileWriter(visualize.logs_directory, sess.graph, flush_secs=5)
 
     graph_vars = tf.global_variables()
     for var in tqdm(graph_vars):
@@ -85,9 +86,6 @@ with tf.Session(config=config) as sess:
             print('found uninitialized variable {}'.format(var.name))
             sess.run(tf.initialize_variables([var]))
 
-    # TensorBoard graph summary
-
-    log_writer = tf.summary.FileWriter(visualize.logs_directory, sess.graph, flush_secs=5)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
         batch_images, batch_labels, _, _ = data.make_random_batch(batch_size=batch_size,

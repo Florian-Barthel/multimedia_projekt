@@ -71,7 +71,7 @@ def create(path, anchor_grid, iou):
 
 
     def random_rotate(image, bb_images):
-        random_angle = tf.random.uniform([1], minval = -np.pi, maxval = np.pi)
+        random_angle = tf.random.uniform([1], minval = -(np.pi / 4.0), maxval = (np.pi / 4.0))
         random_rotate_matrix = tf.contrib.image.angles_to_projective_transforms(random_angle, tf.cast(tf.shape(image)[0], tf.float32), tf.cast(tf.shape(image)[1], tf.float32))
         rotated_image = tf.contrib.image.transform(image, random_rotate_matrix)
         rotated_bb_images = tf.contrib.image.transform(bb_images, random_rotate_matrix)
@@ -104,17 +104,8 @@ def create(path, anchor_grid, iou):
         return image, bb_images
 
     def random_flip(image, bb_images):
-        flip_vertically = random.choice([True, False])
-        flip_horizontally = random.choice([True, False])
-
-        if flip_vertically == True:
-            image = tf.image.flip_left_right(image)
-            bb_images = tf.image.flip_left_right(bb_images)
-        
-        if flip_horizontally == True:
-            image = tf.image.flip_up_down(image)
-            bb_images = tf.image.flip_up_down(bb_images)
-
+        image = tf.image.flip_left_right(image)
+        bb_images = tf.image.flip_left_right(bb_images)
         return image, bb_images        
 
 

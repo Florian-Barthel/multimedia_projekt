@@ -54,13 +54,46 @@ def make_random_batch(batch_size, anchor_grid, iou):
         img = np.array(Image.open(image_paths[i]))
         h, w = img.shape[:2]
         img_pad = np.pad(img, pad_width=((0, 320 - h), (0, 320 - w), (0, 0)), mode='constant', constant_values=0)
-        img_norm = img_pad.astype(np.float) / 127.5 - 1
+        img_norm = img_pad.astype(np.float32) / 127.5 - 1
         images.append(img_norm)
 
         max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_annotation_rects)
         labelgrid = (max_overlaps > iou).astype(np.int32)
         labels.append(labelgrid)
     return images, labels, gt_rects, image_paths
+
+
+def get_validation_data(package_size, anchor_grid, iou):
+    items = get_dict_from_folder('test')
+    images = []
+    labels = []
+    gt_rects = []
+    image_paths = []
+    counter = 0
+    result = []
+    for path in items:
+        counter += 1
+        image_paths.append(path)
+        gt_annotation_rects = items.get(path)
+        gt_rects.append(gt_annotation_rects)
+
+        img = np.array(Image.open(path))
+        h, w = img.shape[:2]
+        img_pad = np.pad(img, pad_width=((0, 320 - h), (0, 320 - w), (0, 0)), mode='constant', constant_values=0)
+        img_norm = img_pad.astype(np.float32) / 127.5 - 1
+        images.append(img_norm)
+
+        max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_annotation_rects)
+        labelgrid = (max_overlaps > iou).astype(np.int32)
+        labels.append(labelgrid)
+        if counter % package_size is 0:
+            result.append((np.asarray(images), np.asarray(labels), np.asarray(gt_rects), np.asarray(image_paths)))
+            images = []
+            labels = []
+            gt_rects = []
+            image_paths = []
+    result.append((np.asarray(images), np.asarray(labels), np.asarray(gt_rects), np.asarray(image_paths)))
+    return result
 
 
 def convert_to_annotation_rects_output(anchor_grid, output):

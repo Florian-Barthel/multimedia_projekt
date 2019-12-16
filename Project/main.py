@@ -19,26 +19,23 @@ url = tb.launch()
 f_map_rows = 10
 f_map_cols = 10
 scale_factor = 32.0
-scales = [50, 80, 100, 150]
-aspect_ratios = [1.0, 1.5, 2.0]
-batch_size = 30
+scales = [70, 100, 140, 200]
+aspect_ratios = [0.5, 1.0, 2.0]
+batch_size = 32
 iou = 0.5
 learning_rate = 0.001
-iterations = 10
-negative_percentage = 15
+iterations = 1000
+negative_percentage = 10
 
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
 current_time = datetime.now()
 logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
 
-gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
+gpu_options = tf.GPUOptions(allow_growth=True)
 config = tf.ConfigProto(gpu_options=gpu_options)
 
 with tf.Session(config=config) as sess:
-    images_placeholder = tf.placeholder(tf.float32, shape=(None,
-                                                           320,
-                                                           320,
-                                                           3))
+    images_placeholder = tf.placeholder(tf.float32, shape=(None, 320, 320, 3))
 
     labels_placeholder = tf.placeholder(tf.float32, shape=(None,
                                                            f_map_rows,
@@ -68,12 +65,7 @@ with tf.Session(config=config) as sess:
         objective = optimizer.minimize(loss=my_loss)
         return objective
 
-
     optimize = optimize(calculate_loss)
-
-    tf.summary.scalar('loss', calculate_loss)
-    tf.summary.scalar('num_predicted', num_predicted)
-    merged_summary = tf.summary.merge_all()
 
     graph_vars = tf.global_variables()
     for var in tqdm(graph_vars):
@@ -84,6 +76,9 @@ with tf.Session(config=config) as sess:
             sess.run(tf.initialize_variables([var]))
 
     # TensorBoard graph summary
+    tf.summary.scalar('loss', calculate_loss)
+    tf.summary.scalar('num_predicted', num_predicted)
+    merged_summary = tf.summary.merge_all()
     log_writer = tf.summary.FileWriter(logs_directory, sess.graph)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
@@ -103,15 +98,20 @@ with tf.Session(config=config) as sess:
         # TensorBoard scalar summary
         log_writer.add_summary(summary, i)
 
-    num_test_images = 1543
-    test_images, test_labels, gt_annotation_rects, test_paths = data.make_random_batch(num_test_images, my_anchor_grid, iou)
-    output = sess.run(calculate_output, feed_dict={images_placeholder: test_images,
-                                                   labels_placeholder: test_labels})
-    for i in range(num_test_images):
+    validation_data = data.get_validation_data(100, my_anchor_grid, iou)
+    # test_images, test_labels, gt_annotation_rects, test_paths = data.get_validation_data(my_anchor_grid, iou)
+    for i in range(len(validation_data)):
+        (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[i]
+        output = sess.run(calculate_output, feed_dict={images_placeholder: test_images,
+                                                       labels_placeholder: test_labels})
+        # Saving detections for evaluation purposes
+        evaluation.prepare_detections(output, my_anchor_grid, test_paths)
+
+    num_view_images = 5
+    for i in range(num_view_images):
         img = Image.fromarray(((test_images[i] + 1) * 128).astype(np.uint8), 'RGB')
         data.draw_bounding_boxes(image=img,
-                                 annotation_rects=data.convert_to_annotation_rects_label(my_anchor_grid,
-                                                                                         test_labels[i]),
+                                 annotation_rects=data.convert_to_annotation_rects_label(my_anchor_grid, test_labels[i]),
                                  color=(255, 100, 100))
         data.draw_bounding_boxes(image=img,
                                  annotation_rects=data.convert_to_annotation_rects_output(my_anchor_grid, output[i]),
@@ -122,6 +122,3 @@ with tf.Session(config=config) as sess:
         if not os.path.exists('test_images'):
             os.makedirs('test_images')
         img.save('test_images/max_overlap_boxes_{}.jpg'.format(i))
-    # Saving detections for evaluation purposes
-    evaluation.prepare_detections(output, my_anchor_grid, test_paths, num_test_images)
-

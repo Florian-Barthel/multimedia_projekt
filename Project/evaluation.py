@@ -9,7 +9,7 @@ from datetime import datetime
 # python eval_script\eval_detections.py --detection eval_script/detections.txt --dset_basedir dataset_mmp
 
 current_time = datetime.now()
-detections_path = 'eval_script/' + current_time.strftime('%d-%m-%Y_%H-%M-%S') + 'detections.txt'
+detections_path = 'eval_script/detections/' + current_time.strftime('%d-%m-%Y_%H-%M-%S') + '.txt'
 
 
 # Non-maximum-suppression with default threshold of 0.3 (IoU)

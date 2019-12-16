@@ -24,7 +24,7 @@ aspect_ratios = [0.5, 1.0, 2.0]
 batch_size = 32
 iou = 0.5
 learning_rate = 0.001
-iterations = 1000
+iterations = 5
 negative_percentage = 10
 
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss

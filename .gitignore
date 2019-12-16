@@ -111,4 +111,4 @@ Project/logs/*
 Project/eval_script/detections.txt
 Project/eval_script/eval_pr_person.png
 Project/eval_script/eval_results.txt
-
+Project/eval_script/detections/*

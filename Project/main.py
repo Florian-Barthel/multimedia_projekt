@@ -24,8 +24,7 @@ aspect_ratios = [0.5, 1.0, 2.0]
 batch_size = 32
 iou = 0.5
 learning_rate = 0.001
-iterations = 5
-negative_percentage = 10
+iterations = 10
 
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
 current_time = datetime.now()
@@ -50,8 +49,7 @@ with tf.Session(config=config) as sess:
                                     f_cols=f_map_cols)
 
     calculate_loss, num_labels, num_random, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
-                                                                                    labels_placeholder=labels_placeholder,
-                                                                                    negative_percentage=negative_percentage)
+                                                                                    labels_placeholder=labels_placeholder)
 
     my_anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
                                             f_map_cols=f_map_cols,

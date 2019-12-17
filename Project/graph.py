@@ -18,5 +18,4 @@ def output(images_placeholder, num_scales, num_aspect_ratios, f_rows, f_cols):
 
 def loss(input_tensor, labels_placeholder, negative_percentage):
     return nodes.calculate_loss(input_tensor=input_tensor,
-                                labels_tensor=labels_placeholder,
-                                negative_percentage=negative_percentage)
+                                labels_tensor=labels_placeholder)

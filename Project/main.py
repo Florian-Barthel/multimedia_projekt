@@ -23,8 +23,8 @@ scales = [70, 100, 140, 200]
 aspect_ratios = [0.5, 1.0, 2.0]
 batch_size = 32
 iou = 0.5
-learning_rate = 0.001
-iterations = 10
+learning_rate = 0.002
+iterations = 100
 
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
 current_time = datetime.now()

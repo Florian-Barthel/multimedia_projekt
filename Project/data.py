@@ -98,7 +98,7 @@ def get_validation_data(package_size, anchor_grid, iou):
 
 def convert_to_annotation_rects_output(anchor_grid, output):
     calc_softmax = softmax(output, axis=-1)
-    foreground = np.delete(calc_softmax, [0], axis=-1)
+    foreground = np.delete(calc_softmax, [1], axis=-1)
     filtered_indices = np.where(foreground > 0.7)
     remove_last = filtered_indices[:4]
     max_boxes = anchor_grid[remove_last]

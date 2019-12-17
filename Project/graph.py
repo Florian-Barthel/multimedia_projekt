@@ -16,6 +16,6 @@ def output(images_placeholder, num_scales, num_aspect_ratios, f_rows, f_cols):
     return reshape
 
 
-def loss(input_tensor, labels_placeholder, negative_percentage):
+def loss(input_tensor, labels_placeholder):
     return nodes.calculate_loss(input_tensor=input_tensor,
                                 labels_tensor=labels_placeholder)

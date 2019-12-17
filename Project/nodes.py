@@ -31,7 +31,7 @@ def reshape(input_tensor, scales, aspect_ratios, f_cols, f_rows):
     return result
 
 
-def calculate_loss(input_tensor, labels_tensor, negative_multiplier=10):
+def calculate_loss(input_tensor, labels_tensor):
     cast_input = tf.cast(input_tensor, tf.float32)
     cast_labels = tf.cast(labels_tensor, tf.int32)
 
@@ -41,7 +41,7 @@ def calculate_loss(input_tensor, labels_tensor, negative_multiplier=10):
         dtype=tf.dtypes.float32
     )
     flat = tf.reshape(random_weights, [-1])
-    values, indices = tf.nn.top_k(flat, k=tf.reduce_sum(cast_labels) * negative_multiplier)
+    values, indices = tf.nn.top_k(flat, k=tf.reduce_sum(cast_labels) * 10)
     threshold = values[-1]
     negative_examples = tf.cast(random_weights > threshold, tf.dtypes.int32)
     weights = negative_examples + cast_labels

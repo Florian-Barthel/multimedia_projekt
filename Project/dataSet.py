@@ -10,7 +10,7 @@ from tensorflow.python.framework import ops
 image_height = 320
 image_width = 320
 
-crop_factor = 0.2
+crop_factor = 0.1
 augmentation_factor = 0.15
 
 # returns images of shape [batch_size, 2, 320, 320, 3] and labels of shape [batch_size, f_map_rows, f_map_cols, len(scales), len(aspect_ratios)]

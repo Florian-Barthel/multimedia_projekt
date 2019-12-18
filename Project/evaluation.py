@@ -46,9 +46,8 @@ def create_boxes_dict(data, anchor_grid, fg_threshold=0.1):
                         if foreground[i, j, k, l, m] > fg_threshold:
                             scores.append(foreground[i, j, k, l, m])
     # Get the boxes from the data
-    filtered_indices = np.where(foreground > fg_threshold)
-    remove_last = filtered_indices[:4]
-    max_boxes = anchor_grid[remove_last]
+    indices = np.where(foreground > fg_threshold)[:4]
+    max_boxes = anchor_grid[indices]
     boxes = [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
     for i in range(len(boxes)):
         boxes_dict[boxes[i]] = scores[i]
@@ -69,15 +68,9 @@ def save_boxes(boxes, image_path):
     file.close()
 
 
-# Clears the detections file located at detections_path
-def clear_detections():
-    open(detections_path, "w+").close()
-
-
 # Prepares detections from the output and anchor_grid applying non-maximum-suppression
 # and saving the resulting detections to disk
 def prepare_detections(output, anchor_grid, image_paths, nms_threshold=0.3):
-    # clear_detections()
     for i in range(len(image_paths)):
         boxes_dict = create_boxes_dict(output[i], anchor_grid)
         nms = non_maximum_suppression(boxes_dict, nms_threshold)

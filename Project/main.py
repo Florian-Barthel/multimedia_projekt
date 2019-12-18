@@ -2,6 +2,7 @@ from tqdm import tqdm
 import numpy as np
 from PIL import Image
 import os
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
@@ -20,11 +21,11 @@ f_map_rows = 10
 f_map_cols = 10
 scale_factor = 32.0
 scales = [70, 100, 140, 200]
-aspect_ratios = [0.5, 1.0, 2.0]
-batch_size = 32
+aspect_ratios = [0.5, 0.75, 1.0, 1.5]
+batch_size = 20
 iou = 0.5
-learning_rate = 0.002
-iterations = 100
+learning_rate = 0.001
+iterations = 10000
 
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
 current_time = datetime.now()
@@ -48,8 +49,9 @@ with tf.Session(config=config) as sess:
                                     f_rows=f_map_rows,
                                     f_cols=f_map_cols)
 
-    calculate_loss, num_labels, num_random, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
-                                                                                    labels_placeholder=labels_placeholder)
+    calculate_loss, num_labels, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
+                                                                        labels_placeholder=labels_placeholder,
+                                                                        negative_example_factor=9)
 
     my_anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
                                             f_map_cols=f_map_cols,
@@ -62,6 +64,7 @@ with tf.Session(config=config) as sess:
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
         objective = optimizer.minimize(loss=my_loss)
         return objective
+
 
     optimize = optimize(calculate_loss)
 
@@ -84,20 +87,19 @@ with tf.Session(config=config) as sess:
                                                                            anchor_grid=my_anchor_grid,
                                                                            iou=iou)
 
-        loss, labels, random, weights, predicted, _, summary = sess.run(
-            [calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary],
+        loss, labels, weights, predicted, _, summary = sess.run(
+            [calculate_loss, num_labels, num_weights, num_predicted, optimize, merged_summary],
             feed_dict={images_placeholder: batch_images,
                        labels_placeholder: batch_labels})
 
         description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
-            labels) + ' num_random: ' + str(random) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
+            labels) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
             predicted)
-        progress_bar.set_description(description, refresh=True)
+        progress_bar.set_description(description)
         # TensorBoard scalar summary
         log_writer.add_summary(summary, i)
 
     validation_data = data.get_validation_data(100, my_anchor_grid, iou)
-    # test_images, test_labels, gt_annotation_rects, test_paths = data.get_validation_data(my_anchor_grid, iou)
     for i in range(len(validation_data)):
         (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[i]
         output = sess.run(calculate_output, feed_dict={images_placeholder: test_images,
@@ -107,9 +109,10 @@ with tf.Session(config=config) as sess:
 
     num_view_images = 5
     for i in range(num_view_images):
-        img = Image.fromarray(((test_images[i] + 1) * 128).astype(np.uint8), 'RGB')
+        img = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
         data.draw_bounding_boxes(image=img,
-                                 annotation_rects=data.convert_to_annotation_rects_label(my_anchor_grid, test_labels[i]),
+                                 annotation_rects=data.convert_to_annotation_rects_label(my_anchor_grid,
+                                                                                         test_labels[i]),
                                  color=(255, 100, 100))
         data.draw_bounding_boxes(image=img,
                                  annotation_rects=data.convert_to_annotation_rects_output(my_anchor_grid, output[i]),

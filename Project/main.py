@@ -7,7 +7,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
 from datetime import datetime
-import data
+import dataUtil
 import graph
 import anchorgrid
 import evaluation
@@ -83,9 +83,9 @@ with tf.Session(config=config) as sess:
     log_writer = tf.summary.FileWriter(logs_directory, sess.graph)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
-        batch_images, batch_labels, _, test_paths = data.make_random_batch(batch_size=batch_size,
-                                                                           anchor_grid=my_anchor_grid,
-                                                                           iou=iou)
+        batch_images, batch_labels, _, test_paths = dataUtil.make_random_batch(batch_size=batch_size,
+                                                                               anchor_grid=my_anchor_grid,
+                                                                               iou=iou)
 
         loss, labels, weights, predicted, _, summary = sess.run(
             [calculate_loss, num_labels, num_weights, num_predicted, optimize, merged_summary],
@@ -99,7 +99,7 @@ with tf.Session(config=config) as sess:
         # TensorBoard scalar summary
         log_writer.add_summary(summary, i)
 
-    validation_data = data.get_validation_data(100, my_anchor_grid, iou)
+    validation_data = dataUtil.get_validation_data(100, my_anchor_grid, iou)
     for i in range(len(validation_data)):
         (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[i]
         output = sess.run(calculate_output, feed_dict={images_placeholder: test_images,
@@ -110,16 +110,17 @@ with tf.Session(config=config) as sess:
     num_view_images = 5
     for i in range(num_view_images):
         img = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
-        data.draw_bounding_boxes(image=img,
-                                 annotation_rects=data.convert_to_annotation_rects_label(my_anchor_grid,
-                                                                                         test_labels[i]),
-                                 color=(255, 100, 100))
-        data.draw_bounding_boxes(image=img,
-                                 annotation_rects=data.convert_to_annotation_rects_output(my_anchor_grid, output[i]),
-                                 color=(100, 255, 100))
-        data.draw_bounding_boxes(image=img,
-                                 annotation_rects=gt_annotation_rects[i],
-                                 color=(100, 100, 255))
+        dataUtil.draw_bounding_boxes(image=img,
+                                     annotation_rects=dataUtil.convert_to_annotation_rects_label(my_anchor_grid,
+                                                                                                 test_labels[i]),
+                                     color=(255, 100, 100))
+        dataUtil.draw_bounding_boxes(image=img,
+                                     annotation_rects=dataUtil.convert_to_annotation_rects_output(my_anchor_grid,
+                                                                                                  output[i]),
+                                     color=(100, 255, 100))
+        dataUtil.draw_bounding_boxes(image=img,
+                                     annotation_rects=gt_annotation_rects[i],
+                                     color=(100, 100, 255))
         if not os.path.exists('test_images'):
             os.makedirs('test_images')
         img.save('test_images/max_overlap_boxes_{}.jpg'.format(i))

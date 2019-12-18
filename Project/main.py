@@ -5,8 +5,9 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
+import dataSet
+import dataUtil
 from datetime import datetime
-import data
 import graph
 import anchorgrid
 import evaluation
@@ -25,6 +26,7 @@ batch_size = 30
 iou = 0.5
 learning_rate = 0.001
 iterations = 10
+
 negative_percentage = 15
 
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
@@ -34,35 +36,42 @@ logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
 gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
 config = tf.ConfigProto(gpu_options=gpu_options)
 
+anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
+                                     f_map_cols=f_map_cols,
+                                     scale_factor=scale_factor,
+                                     scales=scales,
+                                     aspect_ratios=aspect_ratios)
+
+train_dataset = dataSet.create("./dataset_mmp/train", anchor_grid, iou).batch(batch_size)
+test_dataset = dataSet.create("./dataset_mmp/test", anchor_grid, iou).batch(batch_size)
+
+handle = tf.placeholder(tf.string, shape=[])
+iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
+
+train_iterator = train_dataset.make_one_shot_iterator()
+test_iterator = test_dataset.make_one_shot_iterator()
+
+next_element = iterator.get_next()
+
 with tf.Session(config=config) as sess:
-    images_placeholder = tf.placeholder(tf.float32, shape=(None,
-                                                           320,
-                                                           320,
-                                                           3))
+    train_handle = sess.run(train_iterator.string_handle())
+    test_handle = sess.run(test_iterator.string_handle())
 
-    labels_placeholder = tf.placeholder(tf.float32, shape=(None,
-                                                           f_map_rows,
-                                                           f_map_cols,
-                                                           len(scales),
-                                                           len(aspect_ratios)))
+    images_tensor, labels_tensor = next_element
 
-    calculate_output = graph.output(images_placeholder=images_placeholder,
+    #use only raw images!
+    no_gts_images_tensor = images_tensor[:,0]
+
+    calculate_output = graph.output(images=no_gts_images_tensor,
                                     num_scales=len(scales),
                                     num_aspect_ratios=len(aspect_ratios),
                                     f_rows=f_map_rows,
                                     f_cols=f_map_cols)
 
     calculate_loss, num_labels, num_random, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
-                                                                                    labels_placeholder=labels_placeholder,
+                                                                                    labels=labels_tensor,
                                                                                     negative_percentage=negative_percentage)
-
-    my_anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
-                                            f_map_cols=f_map_cols,
-                                            scale_factor=scale_factor,
-                                            scales=scales,
-                                            aspect_ratios=aspect_ratios)
-
-
+    
     def optimize(my_loss):
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
         objective = optimizer.minimize(loss=my_loss)
@@ -84,17 +93,11 @@ with tf.Session(config=config) as sess:
             sess.run(tf.initialize_variables([var]))
 
     # TensorBoard graph summary
-    log_writer = tf.summary.FileWriter(logs_directory, sess.graph)
+    log_writer = tf.summary.FileWriter(logs_directory, sess.graph, flush_secs=5)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
-        batch_images, batch_labels, _, test_paths = data.make_random_batch(batch_size=batch_size,
-                                                                           anchor_grid=my_anchor_grid,
-                                                                           iou=iou)
 
-        loss, labels, random, weights, predicted, _, summary = sess.run(
-            [calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary],
-            feed_dict={images_placeholder: batch_images,
-                       labels_placeholder: batch_labels})
+        loss, labels, random, weights, predicted, _, summary = sess.run([calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: train_handle})
 
         description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
             labels) + ' num_random: ' + str(random) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
@@ -103,25 +106,29 @@ with tf.Session(config=config) as sess:
         # TensorBoard scalar summary
         log_writer.add_summary(summary, i)
 
-    num_test_images = 1543
-    test_images, test_labels, gt_annotation_rects, test_paths = data.make_random_batch(num_test_images, my_anchor_grid, iou)
-    output = sess.run(calculate_output, feed_dict={images_placeholder: test_images,
-                                                   labels_placeholder: test_labels})
-    for i in range(num_test_images):
-        img = Image.fromarray(((test_images[i] + 1) * 128).astype(np.uint8), 'RGB')
-        data.draw_bounding_boxes(image=img,
-                                 annotation_rects=data.convert_to_annotation_rects_label(my_anchor_grid,
-                                                                                         test_labels[i]),
-                                 color=(255, 100, 100))
-        data.draw_bounding_boxes(image=img,
-                                 annotation_rects=data.convert_to_annotation_rects_output(my_anchor_grid, output[i]),
-                                 color=(100, 255, 100))
-        data.draw_bounding_boxes(image=img,
-                                 annotation_rects=gt_annotation_rects[i],
-                                 color=(100, 100, 255))
-        if not os.path.exists('test_images'):
-            os.makedirs('test_images')
-        img.save('test_images/max_overlap_boxes_{}.jpg'.format(i))
-    # Saving detections for evaluation purposes
-    evaluation.prepare_detections(output, my_anchor_grid, test_paths, num_test_images)
 
+
+    images_result, labels_result, output_result = sess.run([images_tensor, labels_tensor, calculate_output], feed_dict={handle: test_handle})
+    #annotated_images
+    images_result = images_result[:,1]
+
+    test_paths = []
+    for i in range(np.shape(images_result)[0]):
+        image = Image.fromarray(((images_result[i] + 1) * 127.5).astype(np.uint8), 'RGB')
+        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))
+
+        dataUtil.draw_bounding_boxes(image=image,
+                             annotation_rects=dataUtil.convert_to_annotation_rects_label(anchor_grid, labels_result[i]),
+                             color=(0, 255, 255))
+
+        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_labels.jpg'.format(i))
+
+        dataUtil.draw_bounding_boxes(image=image,
+                                     annotation_rects=dataUtil.convert_to_annotation_rects_output(anchor_grid, output_result[i]),
+                                     color=(0, 0, 255))
+        
+        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
+        test_paths.append('test_images/{}_estimates.jpg'.format(i))
+
+    # Saving detections for evaluation purposes
+    evaluation.prepare_detections(output_result, anchor_grid, test_paths, batch_size)

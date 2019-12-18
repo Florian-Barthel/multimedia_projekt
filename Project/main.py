@@ -6,6 +6,8 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
+import dataSet
+import dataUtil
 from datetime import datetime
 import dataUtil
 import graph
@@ -34,16 +36,33 @@ logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
 gpu_options = tf.GPUOptions(allow_growth=True)
 config = tf.ConfigProto(gpu_options=gpu_options)
 
+anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
+                                     f_map_cols=f_map_cols,
+                                     scale_factor=scale_factor,
+                                     scales=scales,
+                                     aspect_ratios=aspect_ratios)
+
+train_dataset = dataSet.create("./dataset_mmp/train", anchor_grid, iou).batch(batch_size)
+test_dataset = dataSet.create("./dataset_mmp/test", anchor_grid, iou).batch(batch_size)
+
+handle = tf.placeholder(tf.string, shape=[])
+iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
+
+train_iterator = train_dataset.make_one_shot_iterator()
+test_iterator = test_dataset.make_one_shot_iterator()
+
+next_element = iterator.get_next()
+
 with tf.Session(config=config) as sess:
-    images_placeholder = tf.placeholder(tf.float32, shape=(None, 320, 320, 3))
+    train_handle = sess.run(train_iterator.string_handle())
+    test_handle = sess.run(test_iterator.string_handle())
 
-    labels_placeholder = tf.placeholder(tf.float32, shape=(None,
-                                                           f_map_rows,
-                                                           f_map_cols,
-                                                           len(scales),
-                                                           len(aspect_ratios)))
+    images_tensor, labels_tensor = next_element
 
-    calculate_output = graph.output(images_placeholder=images_placeholder,
+    #use only raw images!
+    no_gts_images_tensor = images_tensor[:,0]
+
+    calculate_output = graph.output(images=no_gts_images_tensor,
                                     num_scales=len(scales),
                                     num_aspect_ratios=len(aspect_ratios),
                                     f_rows=f_map_rows,
@@ -77,15 +96,9 @@ with tf.Session(config=config) as sess:
             sess.run(tf.initialize_variables([var]))
 
     # TensorBoard graph summary
-    tf.summary.scalar('loss', calculate_loss)
-    tf.summary.scalar('num_predicted', num_predicted)
-    merged_summary = tf.summary.merge_all()
-    log_writer = tf.summary.FileWriter(logs_directory, sess.graph)
+    log_writer = tf.summary.FileWriter(logs_directory, sess.graph, flush_secs=5)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
-        batch_images, batch_labels, _, test_paths = dataUtil.make_random_batch(batch_size=batch_size,
-                                                                               anchor_grid=my_anchor_grid,
-                                                                               iou=iou)
 
         loss, labels, weights, predicted, _, summary = sess.run(
             [calculate_loss, num_labels, num_weights, num_predicted, optimize, merged_summary],

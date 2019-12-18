@@ -1,8 +1,8 @@
 import nodes
+import tensorflow as tf
 
-
-def output(images_placeholder, num_scales, num_aspect_ratios, f_rows, f_cols):
-    net = nodes.mobile_net_v2()(images_placeholder, training=False)
+def output(images, num_scales, num_aspect_ratios, f_rows, f_cols):
+    net = nodes.mobile_net_v2()(images, training=False)
 
     convolution = nodes.convolution(input_tensor=net,
                                     scales=num_scales,
@@ -16,7 +16,7 @@ def output(images_placeholder, num_scales, num_aspect_ratios, f_rows, f_cols):
     return reshape
 
 
-def loss(input_tensor, labels_placeholder, negative_example_factor=10):
+def loss(input_tensor, labels, negative_percentage):
     return nodes.calculate_loss(input_tensor=input_tensor,
-                                labels_tensor=labels_placeholder,
-                                negative_example_factor=negative_example_factor)
+                                labels_tensor=labels,
+                                negative_percentage=negative_percentage)

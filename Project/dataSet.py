@@ -32,7 +32,7 @@ def create(path, anchor_grid, iou):
 
 
     def get_bounding_box_images(label_array):
-        bounding_box_images = tf.zeros([len(label_array), image_height, image_width, 1], dtype=tf.float32)
+        bounding_box_images = tf.zeros([tf.shape(label_array)[0], image_height, image_width, 1], dtype=tf.float32)
         bounding_box_images = tf.image.draw_bounding_boxes(bounding_box_images, label_array)
         return bounding_box_images
 

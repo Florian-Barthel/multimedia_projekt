@@ -13,9 +13,8 @@ image_width = 320
 crop_factor = 0.2
 augmentation_factor = 0.15
 
-# returns images of shape [batch_size, 2, 320, 320, 3] and labels of shape [batch_size, f_map_rows, f_map_cols, len(scales), len(aspect_ratios)]
-# [batch_size, 0] are raw images, [batch_size, 1] are ground truth annotated images
-def create(path, anchor_grid, iou):
+# returns images of shape [batch_size, 320, 320, 3] and labels of shape [batch_size, None, 4)]
+def create(path, batch_size):
     
     dataset = tf.data.Dataset.list_files(path+'/*.jpg')
 
@@ -56,18 +55,13 @@ def create(path, anchor_grid, iou):
         return AnnotationRect(h_min, w_min, h_max, w_max)
 
 
-    def bounding_box_images_to_label(bounding_box_images):
-        gt_ar_boxes = []
+    def bounding_box_images_to_gt_tensor(bounding_box_images):
         gt_boxes = []
         for bounding_box_image in bounding_box_images:
             gt_box = bmp_to_annotation_rect(bounding_box_image)
-            gt_ar_boxes.append(gt_box)
             gt_boxes.append([float(gt_box.y1) / image_height, float(gt_box.x1) / image_width, float(gt_box.y2) / image_height, float(gt_box.x2) / image_width])
 
-        max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_ar_boxes)
-        iou_boxes = (max_overlaps > iou).astype(np.int32)
-
-        return iou_boxes, np.array(gt_boxes, dtype=np.float32)
+        return np.array(gt_boxes, dtype=np.float32)
 
 
     def random_rotate(image, bb_images):
@@ -147,13 +141,8 @@ def create(path, anchor_grid, iou):
 
         image, bb_images = random_image_augmentation(image, bb_images)
 
-        iou_boxes, gt_boxes = tf.py_func(bounding_box_images_to_label, [bb_images], [tf.int32, tf.float32])
+        gt_boxes = tf.py_func(bounding_box_images_to_gt_tensor, [bb_images], tf.float32)
 
-        image_annotated_gt = tf.squeeze(tf.image.draw_bounding_boxes(tf.expand_dims(image, 0), tf.expand_dims(gt_boxes, 0)))
+        return image, gt_boxes
 
-        return tf.stack([image, image_annotated_gt]), iou_boxes
-
-
-    dataset = dataset.map(get_image_label_and_gt).cache()
-
-    return dataset
+    return dataset.map(get_image_label_and_gt).cache().padded_batch(batch_size, padded_shapes=([image_height, image_width, 3], [None, 4]))

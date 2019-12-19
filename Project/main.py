@@ -42,8 +42,8 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
                                      scales=scales,
                                      aspect_ratios=aspect_ratios)
 
-train_dataset = dataSet.create("./dataset_mmp/train", anchor_grid, iou).batch(batch_size)
-test_dataset = dataSet.create("./dataset_mmp/test", anchor_grid, iou).batch(batch_size)
+train_dataset = dataSet.create("./dataset_mmp/train", batch_size)
+test_dataset = dataSet.create("./dataset_mmp/test", batch_size)
 
 handle = tf.placeholder(tf.string, shape=[])
 iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
@@ -57,20 +57,25 @@ with tf.Session(config=config) as sess:
     train_handle = sess.run(train_iterator.string_handle())
     test_handle = sess.run(test_iterator.string_handle())
 
-    images_tensor, labels_tensor = next_element
+    images_tensor, gt_labels_tensor = next_element
 
-    #use only raw images!
-    no_gts_images_tensor = images_tensor[:,0]
 
-    calculate_output = graph.output(images=no_gts_images_tensor,
+    overlap_labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid, iou)
+
+    calculate_output, calculate_offsets = graph.output(images=images_tensor,
                                     num_scales=len(scales),
                                     num_aspect_ratios=len(aspect_ratios),
                                     f_rows=f_map_rows,
                                     f_cols=f_map_cols)
 
+
     calculate_loss, num_labels, num_random, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
-                                                                                    labels=labels_tensor,
+                                                                                    labels=overlap_labels_tensor,
                                                                                     negative_percentage=negative_percentage)
+
+
+
+    calculate_offsets_loss = graph.offsets_loss(calculate_offsets, gt_labels_tensor, tf.constant(anchor_grid, dtype=tf.int32))
     
     def optimize(my_loss):
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
@@ -97,7 +102,7 @@ with tf.Session(config=config) as sess:
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
 
-        loss, labels, random, weights, predicted, _, summary = sess.run([calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: train_handle})
+        loss, labels, random, weights, predicted, _, summary, _ = sess.run([calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary, calculate_offsets_loss], feed_dict={handle: train_handle})
 
         description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
             labels) + ' num_random: ' + str(random) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
@@ -108,9 +113,8 @@ with tf.Session(config=config) as sess:
 
 
 
-    images_result, labels_result, output_result = sess.run([images_tensor, labels_tensor, calculate_output], feed_dict={handle: test_handle})
-    #annotated_images
-    images_result = images_result[:,1]
+    gt_images_tensor = tf.image.draw_bounding_boxes(images_tensor, gt_labels_tensor)
+    images_result, labels_result, output_result = sess.run([gt_images_tensor, overlap_labels_tensor, calculate_output], feed_dict={handle: test_handle})
 
     test_paths = []
     for i in range(np.shape(images_result)[0]):

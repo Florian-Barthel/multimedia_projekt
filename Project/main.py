@@ -59,8 +59,8 @@ with tf.Session(config=config) as sess:
 
     images_tensor, labels_tensor = next_element
 
-    #use only raw images!
-    no_gts_images_tensor = images_tensor[:,0]
+    # use only raw images!
+    no_gts_images_tensor = images_tensor[:, 0]
 
     calculate_output = graph.output(images=no_gts_images_tensor,
                                     num_scales=len(scales),
@@ -69,7 +69,7 @@ with tf.Session(config=config) as sess:
                                     f_cols=f_map_cols)
 
     calculate_loss, num_labels, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
-                                                                        labels_placeholder=labels_placeholder,
+                                                                        labels_tensor=labels_tensor,
                                                                         negative_example_factor=9)
 
     my_anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
@@ -99,7 +99,6 @@ with tf.Session(config=config) as sess:
     log_writer = tf.summary.FileWriter(logs_directory, sess.graph, flush_secs=5)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
-
         loss, labels, weights, predicted, _, summary = sess.run(
             [calculate_loss, num_labels, num_weights, num_predicted, optimize, merged_summary],
             feed_dict={images_placeholder: batch_images,

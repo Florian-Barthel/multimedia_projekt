@@ -18,10 +18,10 @@ def output(images, num_scales, num_aspect_ratios, f_rows, f_cols):
     return reshape, offsets
 
 
-def loss(input_tensor, labels, negative_percentage):
+def loss(input_tensor, labels, negative_example_factor):
     return nodes.calculate_loss(input_tensor=input_tensor,
                                 labels_tensor=labels,
-                                negative_percentage=negative_percentage)
+                                negative_example_factor=negative_example_factor)
 
 
 def output_bb_regression(images, num_scales, num_aspect_ratios, f_rows, f_cols):
@@ -45,14 +45,16 @@ def output_bb_regression(images, num_scales, num_aspect_ratios, f_rows, f_cols):
 
 
 def offsets_loss(calculate_offsets, gt_labels_tensor, anchor_grid):
-    anchor_widths = anchor_grid[..., 3] - anchor_grid[..., 1]
-    anchor_heights = anchor_grid[..., 2] - anchor_grid[..., 0]
+    # anchor_widths = anchor_grid[..., 3] - anchor_grid[..., 1]
+    # anchor_heights = anchor_grid[..., 2] - anchor_grid[..., 0]
 
-          #y1                       #y1                    # height
-    ty = (gt_labels[..., ] - anchor_grid[..., 0]) / anchor_heights 
+    #       #y1                       #y1                    # height
+    # ty = (gt_labels[..., ] - anchor_grid[..., 0]) / anchor_heights 
 
-          #x1                       #x2                    # width
-    tx = (gt_labels[..., 1] - anchor_grid[..., 1]) / anchor_widths
+    #       #x1                       #x2                    # width
+    # tx = (gt_labels[..., 1] - anchor_grid[..., 1]) / anchor_widths
+
+    return calculate_offsets
 
 
 def offsets_loss_batch(calculate_offsets, gt_labels_tensor, anchor_grid):

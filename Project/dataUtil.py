@@ -67,6 +67,7 @@ def convert_to_annotation_rects_output(anchor_grid, output):
     calc_softmax = softmax(output, axis=-1)
     foreground = np.delete(calc_softmax, [0], axis=-1)
     filtered_indices = np.where(foreground > 0.95)
+    filtered_indices = np.where(foreground > 0.93)
     remove_last = filtered_indices[:4]
     max_boxes = anchor_grid[remove_last]
     return [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]

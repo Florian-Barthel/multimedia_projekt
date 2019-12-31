@@ -20,14 +20,14 @@ url = tb.launch()
 f_map_rows = 10
 f_map_cols = 10
 scale_factor = 32.0
-scales = [50, 80, 100, 150]
-aspect_ratios = [1.0, 1.5, 2.0]
-batch_size = 30
+scales = [70, 100, 140, 200]
+aspect_ratios = [0.5, 0.75, 1.0, 1.5]
+batch_size = 10
 iou = 0.5
 learning_rate = 0.001
-iterations = 10
+iterations = 30
 
-negative_percentage = 15
+negative_example_factor = 10
 
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
 current_time = datetime.now()
@@ -63,16 +63,14 @@ with tf.Session(config=config) as sess:
     overlap_labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid, iou)
 
     calculate_output, calculate_offsets = graph.output(images=images_tensor,
-                                    num_scales=len(scales),
-                                    num_aspect_ratios=len(aspect_ratios),
-                                    f_rows=f_map_rows,
-                                    f_cols=f_map_cols)
+                                                        num_scales=len(scales),
+                                                        num_aspect_ratios=len(aspect_ratios),
+                                                        f_rows=f_map_rows,
+                                                        f_cols=f_map_cols)
 
-
-    calculate_loss, num_labels, num_random, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
-                                                                                    labels=overlap_labels_tensor,
-                                                                                    negative_percentage=negative_percentage)
-
+    calculate_loss, num_labels, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
+                                                                        labels=overlap_labels_tensor,
+                                                                        negative_example_factor=negative_example_factor)
 
 
     calculate_offsets_loss = graph.offsets_loss(calculate_offsets, gt_labels_tensor, tf.constant(anchor_grid, dtype=tf.int32))
@@ -101,11 +99,10 @@ with tf.Session(config=config) as sess:
     log_writer = tf.summary.FileWriter(logs_directory, sess.graph, flush_secs=5)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
-
-        loss, labels, random, weights, predicted, _, summary, _ = sess.run([calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary, calculate_offsets_loss], feed_dict={handle: train_handle})
+        loss, labels, weights, predicted, _, summary, _ = sess.run([calculate_loss, num_labels, num_weights, num_predicted, optimize, merged_summary, calculate_offsets_loss], feed_dict={handle: train_handle})
 
         description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
-            labels) + ' num_random: ' + str(random) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
+            labels) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
             predicted)
         progress_bar.set_description(description, refresh=True)
         # TensorBoard scalar summary

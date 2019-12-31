@@ -42,7 +42,7 @@ def draw_bounding_boxes(image, annotation_rects, color):
     return image
 
 
-def calculate_overlap_boxes_tensor(labels_tensor, anchor_grid, iou):
+def calculate_overlap_boxes_tensor(labels_tensor, anchor_grid_tensor, iou):
 
     def py_get_overlap_boxes(labels):
         ar_boxes = []
@@ -51,10 +51,10 @@ def calculate_overlap_boxes_tensor(labels_tensor, anchor_grid, iou):
             ar_batch_boxes = []
 
             for label in labels[i]:
-                if(np.ceil(np.sum(label)).astype(np.int32) != 0):
+                if(np.isnan(np.sum(label)) == False):
                     ar_batch_boxes.append(AnnotationRect(int(label[1] * image_height), int(label[0] * image_width), int(label[3] * image_height), int(label[2] * image_width)))
 
-            max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, ar_batch_boxes)
+            max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid_tensor, ar_batch_boxes)
             iou_boxes = (max_overlaps > iou).astype(np.int32)
             ar_boxes.append(iou_boxes)
 

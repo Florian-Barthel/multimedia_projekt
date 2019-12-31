@@ -42,6 +42,8 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
                                      scales=scales,
                                      aspect_ratios=aspect_ratios)
 
+anchor_grid_tensor = tf.constant(anchor_grid, dtype=tf.int32)
+
 train_dataset = dataSet.create("./dataset_mmp/train", batch_size)
 test_dataset = dataSet.create("./dataset_mmp/test", batch_size)
 
@@ -62,28 +64,39 @@ with tf.Session(config=config) as sess:
 
     overlap_labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid, iou)
 
-    calculate_output, calculate_offsets = graph.output(images=images_tensor,
-                                                        num_scales=len(scales),
-                                                        num_aspect_ratios=len(aspect_ratios),
-                                                        f_rows=f_map_rows,
-                                                        f_cols=f_map_cols)
+    probabilities = graph.probabilities_output(images=images_tensor,
+                                               num_scales=len(scales),
+                                               num_aspect_ratios=len(aspect_ratios),
+                                               f_rows=f_map_rows,
+                                               f_cols=f_map_cols)
 
-    calculate_loss, num_labels, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
-                                                                        labels=overlap_labels_tensor,
-                                                                        negative_example_factor=negative_example_factor)
+    probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(input_tensor=probabilities,
+                                                                                          labels_tensor=overlap_labels_tensor,
+                                                                                          negative_example_factor=negative_example_factor)
 
 
-    calculate_offsets_loss = graph.offsets_loss(calculate_offsets, gt_labels_tensor, tf.constant(anchor_grid, dtype=tf.int32))
+    adjustments = graph.adjustments_output(images=images_tensor,
+                                                   num_scales=len(scales),
+                                                   num_aspect_ratios=len(aspect_ratios),
+                                                   f_rows=f_map_rows,
+                                                   f_cols=f_map_cols)
+
+
     
+    adjustments_loss = graph.adjustments_loss(adjustments, gt_labels_tensor, anchor_grid_tensor)
+
+    #tf.ones([10, f_map_rows, f_map_cols, len(scales), len(aspect_ratios), 4])
+    #loss = sess.run(adjustments_loss, feed_dict={handle: train_handle})
+
     def optimize(my_loss):
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
         objective = optimizer.minimize(loss=my_loss)
         return objective
 
 
-    optimize = optimize(calculate_loss)
+    optimize = optimize(adjustments_loss)
 
-    tf.summary.scalar('loss', calculate_loss)
+    tf.summary.scalar('loss', adjustments_loss)
     tf.summary.scalar('num_predicted', num_predicted)
     merged_summary = tf.summary.merge_all()
 
@@ -99,7 +112,7 @@ with tf.Session(config=config) as sess:
     log_writer = tf.summary.FileWriter(logs_directory, sess.graph, flush_secs=5)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
-        loss, labels, weights, predicted, _, summary, _ = sess.run([calculate_loss, num_labels, num_weights, num_predicted, optimize, merged_summary, calculate_offsets_loss], feed_dict={handle: train_handle})
+        loss, labels, weights, predicted, _, summary, = sess.run([adjustments_loss, num_labels, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: train_handle})
 
         description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
             labels) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(

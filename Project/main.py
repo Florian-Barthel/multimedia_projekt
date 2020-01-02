@@ -10,6 +10,7 @@ import dataUtil
 from datetime import datetime
 import graph
 import anchorgrid
+import mobilenet
 import evaluation
 from tensorboard import program
 
@@ -24,7 +25,7 @@ scales = [70, 100, 140, 200]
 aspect_ratios = [0.5, 0.75, 1.0, 1.5]
 batch_size = 10
 iou = 0.5
-learning_rate = 0.001
+learning_rate = 0.00001
 iterations = 30
 
 negative_example_factor = 10
@@ -61,32 +62,25 @@ with tf.Session(config=config) as sess:
 
     images_tensor, gt_labels_tensor = next_element
 
-
     overlap_labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid, iou)
 
-    probabilities = graph.probabilities_output(images=images_tensor,
-                                               num_scales=len(scales),
-                                               num_aspect_ratios=len(aspect_ratios),
-                                               f_rows=f_map_rows,
-                                               f_cols=f_map_cols)
+    features = mobilenet.mobile_net_v2()(images_tensor, training=False)
+    # features = tf.ones([10, 10, 10, 1280])
+
+    probabilities = graph.probabilities_output(features, anchor_grid)
 
     probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(input_tensor=probabilities,
                                                                                           labels_tensor=overlap_labels_tensor,
                                                                                           negative_example_factor=negative_example_factor)
 
 
-    adjustments = graph.adjustments_output(images=images_tensor,
-                                                   num_scales=len(scales),
-                                                   num_aspect_ratios=len(aspect_ratios),
-                                                   f_rows=f_map_rows,
-                                                   f_cols=f_map_cols)
+    adjustments = graph.adjustments_output(features, anchor_grid, anchor_grid_tensor)
 
 
-    
     adjustments_loss = graph.adjustments_loss(adjustments, gt_labels_tensor, anchor_grid_tensor)
 
-    #tf.ones([10, f_map_rows, f_map_cols, len(scales), len(aspect_ratios), 4])
-    #loss = sess.run(adjustments_loss, feed_dict={handle: train_handle})
+    
+
 
     def optimize(my_loss):
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
@@ -107,6 +101,11 @@ with tf.Session(config=config) as sess:
         except:
             print('found uninitialized variable {}'.format(var.name))
             sess.run(tf.initialize_variables([var]))
+
+
+    # print(sess.run(adjustments_loss, feed_dict={handle: train_handle}))
+
+    # exit()
 
     # TensorBoard graph summary
     log_writer = tf.summary.FileWriter(logs_directory, sess.graph, flush_secs=5)

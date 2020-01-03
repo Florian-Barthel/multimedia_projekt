@@ -10,9 +10,9 @@ import dataUtil
 from datetime import datetime
 import graph
 import anchorgrid
-import mobilenet
 import evaluation
 from tensorboard import program
+import mobilenet
 
 tb = program.TensorBoard()
 tb.configure(argv=[None, '--logdir=logs'])
@@ -23,10 +23,10 @@ f_map_cols = 10
 scale_factor = 32.0
 scales = [70, 100, 140, 200]
 aspect_ratios = [0.5, 0.75, 1.0, 1.5]
-batch_size = 10
+batch_size = 50
 iou = 0.5
-learning_rate = 0.00001
-iterations = 30
+learning_rate = 0.01
+iterations = 100
 
 negative_example_factor = 10
 
@@ -56,15 +56,22 @@ test_iterator = test_dataset.make_one_shot_iterator()
 
 next_element = iterator.get_next()
 
-with tf.Session(config=config) as sess:
+with tf.keras.backend.get_session() as sess:
     train_handle = sess.run(train_iterator.string_handle())
     test_handle = sess.run(test_iterator.string_handle())
 
     images_tensor, gt_labels_tensor = next_element
 
+    #images = tf.ones([batch_size, 320, 320, 3])
+
     overlap_labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid, iou)
 
-    features = mobilenet.mobile_net_v2()(images_tensor, training=False)
+
+    features = mobilenet.mobile_net_v2()(images_tensor)
+
+    # features = tf.Print(features, [tf.reduce_mean(features)])
+
+    
     # features = tf.ones([10, 10, 10, 1280])
 
     probabilities = graph.probabilities_output(features, anchor_grid)
@@ -77,14 +84,14 @@ with tf.Session(config=config) as sess:
     adjustments = graph.adjustments_output(features, anchor_grid, anchor_grid_tensor)
 
 
-    adjustments_loss = graph.adjustments_loss(adjustments, gt_labels_tensor, anchor_grid_tensor)
-
-    
+    adjustments_loss, adjustments_values = graph.adjustments_loss(adjustments, gt_labels_tensor, overlap_labels_tensor, anchor_grid_tensor)
 
 
-    def optimize(my_loss):
+
+    def optimize(target_loss):
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
-        objective = optimizer.minimize(loss=my_loss)
+        objective = optimizer.minimize(loss=target_loss, var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='adjustments'))
+        #objective = optimizer.minimize(loss=target_loss)
         return objective
 
 
@@ -103,22 +110,33 @@ with tf.Session(config=config) as sess:
             sess.run(tf.initialize_variables([var]))
 
 
-    # print(sess.run(adjustments_loss, feed_dict={handle: train_handle}))
-
-    # exit()
-
     # TensorBoard graph summary
     log_writer = tf.summary.FileWriter(logs_directory, sess.graph, flush_secs=5)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
-        loss, labels, weights, predicted, _, summary, = sess.run([adjustments_loss, num_labels, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: train_handle})
 
-        description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
-            labels) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
-            predicted)
-        progress_bar.set_description(description, refresh=True)
-        # TensorBoard scalar summary
-        log_writer.add_summary(summary, i)
+        loss, _, debug_values = sess.run([adjustments_loss, optimize, adjustments_values], feed_dict={handle: train_handle})
+
+        progress_bar.set_description(' loss:' + str(np.around(loss, decimals=5)), refresh=True)
+        # print(debug_values)
+        # print(np.sum(debug_values))
+        # print(np.amax(debug_values))
+        # print(np.amin(debug_values))
+        # print(np.shape(debug_values))
+        # progress_bar.set_description(' loss:' + str(np.around(loss, decimals=5)), refresh=True)
+
+        # print("--------------------")
+        # print("--------------------")
+        # print("--------------------")
+        # print("--------------------")
+        #loss, labels, weights, predicted, _, summary, = sess.run([adjustments_loss, num_labels, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: train_handle})
+
+        # description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
+        #     labels) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
+        #     predicted)
+        # progress_bar.set_description(description, refresh=True)
+        # # TensorBoard scalar summary
+        # log_writer.add_summary(summary, i)
 
 
 

@@ -2,6 +2,7 @@ from tqdm import tqdm
 import numpy as np
 from PIL import Image
 import os
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
@@ -52,8 +53,8 @@ with tf.Session(config=config) as sess:
 
     images_tensor, labels_tensor = next_element
 
-    #use only raw images!
-    no_gts_images_tensor = images_tensor[:,0]
+    # use only raw images!
+    no_gts_images_tensor = images_tensor[:, 0]
 
     calculate_output = graph.output(images=no_gts_images_tensor,
                                     num_scales=len(scales),
@@ -64,7 +65,8 @@ with tf.Session(config=config) as sess:
     calculate_loss, num_labels, num_random, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
                                                                                     labels=labels_tensor,
                                                                                     negative_percentage=negative_percentage)
-    
+
+
     def optimize(my_loss):
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
         objective = optimizer.minimize(loss=my_loss)
@@ -90,11 +92,9 @@ with tf.Session(config=config) as sess:
 
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
-        batch_images, batch_labels, _, _ = data.make_random_batch(batch_size=batch_size,
-                                                                  anchor_grid=anchor_grid,
-                                                                  iou=iou)
-
-        loss, labels, random, weights, predicted, _, summary = sess.run([calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: train_handle})
+        loss, labels, random, weights, predicted, _, summary = sess.run(
+            [calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary],
+            feed_dict={handle: train_handle})
 
         description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
             labels) + ' num_random: ' + str(random) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
@@ -102,6 +102,7 @@ with tf.Session(config=config) as sess:
         progress_bar.set_description(description, refresh=True)
         # TensorBoard scalar summary
         log_writer.add_summary(summary, i)
+
     fileUtil.save_model(saver, sess)
     images_result, labels_result, output_result = sess.run([images_tensor, labels_tensor, calculate_output],
                                                            feed_dict={handle: test_handle})
@@ -130,4 +131,3 @@ with tf.Session(config=config) as sess:
 
     # Saving detections for evaluation purposes
     evaluation.prepare_detections(output_result, anchor_grid, test_paths, batch_size)
-

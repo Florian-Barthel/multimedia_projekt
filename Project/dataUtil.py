@@ -3,7 +3,7 @@ import numpy as np
 import os
 import random
 
-import visualize
+import fileUtil
 from annotationRect import AnnotationRect
 import geometry
 from scipy.special import softmax
@@ -45,7 +45,7 @@ def draw_bounding_boxes(image, annotation_rects, color):
 def convert_to_annotation_rects_output(anchor_grid, output):
     calc_softmax = softmax(output, axis=-1)
     foreground = np.delete(calc_softmax, [0], axis=-1)
-    filtered_indices = np.where(foreground > visualize.fg_threshold)
+    filtered_indices = np.where(foreground > fileUtil.fg_threshold)
     remove_last = filtered_indices[:4]
     max_boxes = anchor_grid[remove_last]
     return [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]

@@ -10,7 +10,7 @@ import data
 import graph
 import anchorgrid
 import evaluation
-import visualize
+import fileUtil
 
 f_map_rows = 10
 f_map_cols = 10
@@ -24,7 +24,7 @@ iterations = 10
 
 negative_percentage = 15
 
-visualize.run_tensorboard()
+fileUtil.run_tensorboard()
 
 gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
 config = tf.ConfigProto(gpu_options=gpu_options)
@@ -73,10 +73,12 @@ with tf.Session(config=config) as sess:
 
     optimize = optimize(calculate_loss)
 
+    saver = tf.train.Saver()
     tf.summary.scalar('loss', calculate_loss)
     tf.summary.scalar('num_predicted', num_predicted)
     merged_summary = tf.summary.merge_all()
-    log_writer = tf.summary.FileWriter(visualize.logs_directory, sess.graph, flush_secs=5)
+
+    log_writer = tf.summary.FileWriter(fileUtil.logs_directory, sess.graph, flush_secs=5)
 
     graph_vars = tf.global_variables()
     for var in tqdm(graph_vars):
@@ -100,7 +102,7 @@ with tf.Session(config=config) as sess:
         progress_bar.set_description(description, refresh=True)
         # TensorBoard scalar summary
         log_writer.add_summary(summary, i)
-
+    fileUtil.save_model(saver, sess)
     num_test_images = 50
     test_images, test_labels, gt_annotation_rects, test_paths = data.make_random_batch(num_test_images, anchor_grid,
                                                                                        iou)
@@ -110,5 +112,7 @@ with tf.Session(config=config) as sess:
     # Saving detections for evaluation purposes
     nms_boxes = evaluation.prepare_detections(output, anchor_grid, test_paths, num_test_images)
     # Drawing first 10 images before and after non-maximum-suppression
-    visualize.draw_images(test_images, test_labels, output, anchor_grid, gt_annotation_rects, nms_boxes, num_test_images)
+
+    fileUtil.draw_images(test_images, test_labels, output, anchor_grid, gt_annotation_rects, nms_boxes, num_test_images)
+
 

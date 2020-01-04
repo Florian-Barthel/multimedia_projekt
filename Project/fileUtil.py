@@ -12,6 +12,10 @@ fg_threshold = 0.7
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
 current_time = datetime.now()
 logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
+model_directory = 'models/'
+
+def save_model(saver, sess):
+    saver.save(sess, model_directory + 'model')
 
 def draw_images(test_images, test_labels, output, anchor_grid, gt_annotation_rects, nms_boxes, num_test_images):
     if not os.path.exists(image_path):

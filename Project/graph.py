@@ -1,22 +1,15 @@
 import nodes
 
 
-def output(images, num_scales, num_aspect_ratios, f_rows, f_cols):
-    net = nodes.mobile_net_v2()(images, training=False)
+def output(input_tensor):
+    net = nodes.mobile_net_v2()(input_tensor, training=False)
 
-    convolution = nodes.convolution(input_tensor=net,
-                                    scales=num_scales,
-                                    aspect_ratios=num_aspect_ratios)
+    convolution = nodes.convolution(input_tensor=net)
 
-    reshape = nodes.reshape(input_tensor=convolution,
-                            scales=num_scales,
-                            aspect_ratios=num_aspect_ratios,
-                            f_rows=f_rows,
-                            f_cols=f_cols)
+    reshape = nodes.reshape(input_tensor=convolution)
     return reshape
 
 
-def loss(input_tensor, labels_tensor, negative_example_factor):
+def loss(input_tensor, labels_tensor):
     return nodes.calculate_loss(input_tensor=input_tensor,
-                                labels_tensor=labels_tensor,
-                                negative_example_factor=negative_example_factor)
+                                labels_tensor=labels_tensor)

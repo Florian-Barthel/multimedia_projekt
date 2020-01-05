@@ -1,11 +1,8 @@
 import numpy as np
-import random
 from annotationRect import AnnotationRect
 import geometry
 import tensorflow as tf
-from tensorflow.python.ops import math_ops
-from tensorflow.python.ops import array_ops
-from tensorflow.python.framework import ops
+import config
 
 image_height = 320
 image_width = 320
@@ -15,7 +12,7 @@ augmentation_factor = 0.15
 
 # returns images of shape [batch_size, 2, 320, 320, 3] and labels of shape [batch_size, f_map_rows, f_map_cols, len(scales), len(aspect_ratios)]
 # [batch_size, 0] are raw images, [batch_size, 1] are ground truth annotated images
-def create(path, anchor_grid, iou):
+def create(path, anchor_grid):
     
     dataset = tf.data.Dataset.list_files(path+'/*.jpg')
 
@@ -65,7 +62,7 @@ def create(path, anchor_grid, iou):
             gt_boxes.append([float(gt_box.y1) / image_height, float(gt_box.x1) / image_width, float(gt_box.y2) / image_height, float(gt_box.x2) / image_width])
 
         max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_ar_boxes)
-        iou_boxes = (max_overlaps > iou).astype(np.int32)
+        iou_boxes = (max_overlaps > config.iou).astype(np.int32)
 
         return iou_boxes, np.array(gt_boxes, dtype=np.float32)
 
@@ -156,4 +153,4 @@ def create(path, anchor_grid, iou):
 
     dataset = dataset.map(get_image_label_and_gt).cache()
 
-    return dataset
+    return dataset.repeat()

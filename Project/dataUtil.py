@@ -101,10 +101,10 @@ def get_validation_data(package_size, anchor_grid):
     return result
 
 
-def convert_to_annotation_rects_output(anchor_grid, output):
+def convert_to_annotation_rects_output(anchor_grid, output, confidence=0.7):
     calc_softmax = softmax(output, axis=-1)
     foreground = np.delete(calc_softmax, [0], axis=-1)
-    indices = np.where(foreground > 0.7)[:4]
+    indices = np.where(foreground > confidence)[:4]
     max_boxes = anchor_grid[indices]
     return [AnnotationRect(*max_boxes[i]) for i in range(len(max_boxes))]
 

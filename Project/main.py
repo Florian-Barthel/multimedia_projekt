@@ -73,47 +73,38 @@ with tf.Session() as sess:
     merged_summary = tf.summary.merge_all()
     log_writer = tf.summary.FileWriter(logs_directory, sess.graph)
 
-    '''
-    Initialize variables
-    '''
-    graph_vars = tf.global_variables()
-    for var in tqdm(graph_vars):
+    graph_vars = tf.compat.v1.global_variables()
+    progress_bar_init = tqdm(graph_vars)
+    progress_bar_init.set_description('INIT  | ')
+    for var in progress_bar_init:
         try:
             sess.run(var)
         except:
-            print('found uninitialized variable {}'.format(var.name))
-            sess.run(tf.initialize_variables([var]))
+            # print('found uninitialized variable {}'.format(var.name))
+            sess.run(tf.compat.v1.variables_initializer([var]))
 
-    '''
-    Train graph
-    '''
-    progress_bar = tqdm(range(config.iterations))
-    for i in progress_bar:
+    progress_bar_train = tqdm(range(config.iterations))
+    for i in progress_bar_train:
         loss, labels, weights, predicted, _, summary = sess.run(
             [calculate_loss, num_labels, num_weights, num_predicted, optimize, merged_summary],
             feed_dict={handle: train_handle})
 
-        description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
-            labels) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
-            predicted)
-        progress_bar.set_description(description)
+        description = 'TRAIN | '
+        progress_bar_train.set_description(description)
         log_writer.add_summary(summary, i)
 
-    '''
-    Prepare validation data
-    '''
     validation_data = dataUtil.get_validation_data(100, anchor_grid)
-    progress_bar = tqdm(range(len(validation_data)))
-    for i in progress_bar:
+    progress_bar_validate = tqdm(range(len(validation_data)))
+    progress_bar_validate.set_description('VAL   | ')
+    for i in progress_bar_validate:
         (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[i]
         output = sess.run(calculate_output, feed_dict={no_gts_images_tensor: test_images})
         evaluation.prepare_detections(output, anchor_grid, test_paths)
 
-    '''
-    Save example images
-    '''
-    num_view_images = 5
-    for i in range(num_view_images):
+    num_view_images = 30
+    progress_bar_save = tqdm(range(num_view_images))
+    progress_bar_save.set_description('SAVE  | ')
+    for i in progress_bar_save:
         img = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
         dataUtil.draw_bounding_boxes(image=img,
                                      annotation_rects=dataUtil.convert_to_annotation_rects_label(anchor_grid,

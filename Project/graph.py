@@ -60,7 +60,150 @@ def probabilities_loss(input_tensor, labels_tensor, negative_example_factor=10):
 
 
 
-def adjustments_output(features, anchor_grid, anchor_grid_tensor):
+
+def adjustments_output(features, ag, ag_tensor):
+    with tf.variable_scope('adjustments'):
+        ag_shape = np.shape(ag)
+        num_batch_size = tf.shape(features)[0]
+
+        
+
+        features_convoluted_raw = tf.layers.conv2d(inputs=tf.cast(features, tf.float64),
+                                               filters=ag_shape[2] * ag_shape[3] * 4,
+                                               kernel_size=3,
+                                               strides=1,
+                                               padding='same',
+                                               activation=None,
+                                               kernel_initializer=tf.truncated_normal_initializer(0.0, 1.0),
+                                               kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005),
+                                               bias_initializer=tf.constant_initializer(0.0),
+                                               bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005))
+
+
+        #features_convoluted = tf.where(tf.math.is_nan(features_convoluted), tf.zeros_like(features_convoluted), features_convoluted)
+        
+
+        features_convoluted_raw = tf.reshape(features_convoluted_raw, [num_batch_size,
+                                       ag_shape[0],
+                                       ag_shape[1],
+                                       ag_shape[2],
+                                       ag_shape[3],
+                                       4])
+
+
+        # Works ok
+        # clip_value = 10000.0
+        # features_convoluted = tf.clip_by_value(features_convoluted, -clip_value, clip_value)
+        # features_convoluted = ((features_convoluted + clip_value) / clip_value * 2.0) * 3.5
+        
+        features_convoluted = (tf.math.sign(features_convoluted_raw) * (tf.math.log(1.0 + tf.abs(features_convoluted_raw))))
+        
+
+        #features_convoluted = tf.nn.softmax(features_convoluted)
+        #features_convoluted = (features_convoluted - tf.reduce_mean(features_convoluted)) / (tf.abs(tf.math.reduce_std(features_convoluted)) + 0.3)
+        #features_convoluted = tf.math.divide_no_nan(features_convoluted - tf.reduce_min(features_convoluted), tf.abs(tf.reduce_max(features_convoluted) - tf.reduce_min(features_convoluted))  + 1.0) * 3.5
+        
+        #features_convoluted = tf.clip_by_value(features_convoluted, -0.5, 0.5)
+
+        offsets = features_convoluted[..., 0:2] 
+        scales = tf.abs(features_convoluted[..., 2:4])
+
+        ag_with_batches = tf.cast(tf.tile(tf.expand_dims(ag_tensor, 0), [num_batch_size, 1, 1, 1, 1, 1]), tf.float64)
+
+        lower = ag_with_batches[..., 0:2]
+        sizes = ag_with_batches[..., 2:4] - lower
+
+        lower_offseted = lower + (lower * offsets)
+        sizes_rescaled = sizes * scales
+
+        #upper_offseted = lower_offseted + sizes_rescaled
+
+        adjusted_bb = tf.concat([lower_offseted, sizes_rescaled], -1)
+
+        # adjusted_bb = tf.Print(adjusted_bb, [tf.math.reduce_sum(tf.cast(tf.math.is_nan(features_convoluted), tf.int32))], summarize=12)
+        # adjusted_bb = tf.Print(adjusted_bb, [tf.math.reduce_std(features_convoluted)], summarize=12)
+        adjusted_bb = tf.Print(adjusted_bb, [adjusted_bb], summarize=12)
+        adjusted_bb = tf.Print(adjusted_bb, ["----------"], summarize=12)
+
+        return adjusted_bb
+
+
+
+
+
+
+def adjustments_loss(adjustments, gts, overlap_labels_tensor, anchor_grid_tensor):
+
+
+
+    num_anchors = tf.reduce_prod(tf.shape(adjustments)[1:5])
+    num_images = tf.shape(adjustments)[0]
+
+    gts = tf.cast(gts, tf.float64) * tf.constant([image_height, image_width, image_height, image_width], tf.float64)
+
+    adjustments = tf.reshape(adjustments, [num_images, num_anchors, 4])
+
+    mask = tf.cast(tf.reshape(overlap_labels_tensor, [num_images, num_anchors]), tf.bool)
+
+    #adjustments = tf.tile(tf.expand_dims(adjustments, -2), [1, 1, tf.shape(gts)[1], 1])
+    
+    gts = gts[:,0,:]
+    gts = tf.tile(tf.expand_dims(gts, 1), [1, num_anchors, 1])
+
+
+    adjustments_sizes = adjustments[..., 2:4]
+    gt_sizes = gts[..., 2:4] - gts[..., 0:2]
+
+    # adjustments_sizes = tf.clip_by_value(adjustments_sizes, 5.0, 150.0)
+    # gt_sizes = tf.clip_by_value(gt_sizes, 5.0, 150.0)
+
+    offset_targets = (gts[..., 0:2] - adjustments[..., 0:2]) / adjustments_sizes
+    scale_targets = tf.math.log((gt_sizes / adjustments_sizes))
+
+
+    #scale_targets = tf.abs(adjustments_sizes - gt_sizes)
+    
+    
+    #scale_targets = tf.reduce_min(scale_targets, -2)
+    #scale_targets = tf.Print(scale_targets, [scale_targets], summarize=12)
+    
+    #return tf.nn.l2_loss(offset_targets), adjustments
+
+
+
+    targets = tf.concat([offset_targets, scale_targets], -1)
+
+    #targets = tf.where(tf.math.is_nan(targets), tf.zeros(tf.shape(targets), tf.float64), targets)
+
+    #targets = tf.Print(targets, [targets], summarize=24)
+
+
+    #targets = tf.reduce_min(targets, -2)
+    #targets = tf.Print(targets, [tf.shape(targets)], summarize=5)
+
+    #targets = tf.boolean_mask(targets, mask)
+
+    
+    regression_loss = tf.nn.l2_loss(targets)
+
+    #regression_loss = tf.Print(regression_loss, [regression_loss], summarize=24)
+    regularization_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='adjustments'))
+
+    loss = regression_loss + regularization_loss
+
+    return regression_loss, adjustments
+
+
+
+
+
+
+
+
+
+
+
+def adjustments_output_(features, anchor_grid, anchor_grid_tensor):
     with tf.variable_scope('adjustments'):
         ag_shape = np.shape(anchor_grid)
 
@@ -111,7 +254,7 @@ def adjustments_output(features, anchor_grid, anchor_grid_tensor):
 
     return bounding_boxes_adjusted
 
-def adjustments_loss(adjustments, gt_labels_tensor, overlap_labels_tensor, anchor_grid_tensor):
+def adjustments_loss_(adjustments, gt_labels_tensor, overlap_labels_tensor, anchor_grid_tensor):
 
     gt_labels_coordinates = tf.cast(gt_labels_tensor, tf.float64) * tf.constant([image_height, image_width, image_height, image_width], tf.float64)
 

@@ -23,10 +23,10 @@ f_map_cols = 10
 scale_factor = 32.0
 scales = [70, 100, 140, 200]
 aspect_ratios = [0.5, 0.75, 1.0, 1.5]
-batch_size = 50
+batch_size = 30
 iou = 0.5
 learning_rate = 0.01
-iterations = 100
+iterations = 1000
 
 negative_example_factor = 10
 
@@ -62,17 +62,14 @@ with tf.keras.backend.get_session() as sess:
 
     images_tensor, gt_labels_tensor = next_element
 
-    #images = tf.ones([batch_size, 320, 320, 3])
+    images = tf.ones([batch_size, 320, 320, 3])
 
     overlap_labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid, iou)
 
 
     features = mobilenet.mobile_net_v2()(images_tensor)
-
-    # features = tf.Print(features, [tf.reduce_mean(features)])
-
+    #features = tf.ones([batch_size, 10, 10, 1280])    
     
-    # features = tf.ones([10, 10, 10, 1280])
 
     probabilities = graph.probabilities_output(features, anchor_grid)
 
@@ -86,10 +83,41 @@ with tf.keras.backend.get_session() as sess:
 
     adjustments_loss, adjustments_values = graph.adjustments_loss(adjustments, gt_labels_tensor, overlap_labels_tensor, anchor_grid_tensor)
 
+    # graph_vars = tf.global_variables()
+    # for var in tqdm(graph_vars):
+    #     try:
+    #         sess.run(var)
+    #     except:
+    #         print('found uninitialized variable {}'.format(var.name))
+    #         sess.run(tf.initialize_variables([var]))
+
+
+    # print(sess.run(adjustments_loss, feed_dict={handle: train_handle}))
+    # exit()
+    # print("---------------------------------------")
+    # print("---------------------------------------")
+    # print(sess.run(adjustments_loss, feed_dict={handle: train_handle}))
+
+    
+    # print("---------------------------------------")
+    # print("---------------------------------------")
+    # print("---------------------------------------")
+    #  204  254  404  354]
+    # [ 204  229  404  379]
+    # [ 204  204  404  404]
+    # [ 204  154  404  454]
+    #print(sess.run(anchor_grid_tensor))
+
+    #exit()
+
+
+    #adjustments_loss, adjustments_values = graph.adjustments_loss(adjustments, gt_labels_tensor, overlap_labels_tensor, anchor_grid_tensor)
+
 
 
     def optimize(target_loss):
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+        #optimizer = tf.train.AdamOptimizer()
         objective = optimizer.minimize(loss=target_loss, var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='adjustments'))
         #objective = optimizer.minimize(loss=target_loss)
         return objective
@@ -115,10 +143,10 @@ with tf.keras.backend.get_session() as sess:
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
 
-        loss, _, debug_values = sess.run([adjustments_loss, optimize, adjustments_values], feed_dict={handle: train_handle})
+        loss, _, debug_values, summary = sess.run([adjustments_loss, optimize, adjustments_values, merged_summary], feed_dict={handle: train_handle})
 
         progress_bar.set_description(' loss:' + str(np.around(loss, decimals=5)), refresh=True)
-        # print(debug_values)
+        #print(debug_values)
         # print(np.sum(debug_values))
         # print(np.amax(debug_values))
         # print(np.amin(debug_values))
@@ -136,7 +164,7 @@ with tf.keras.backend.get_session() as sess:
         #     predicted)
         # progress_bar.set_description(description, refresh=True)
         # # TensorBoard scalar summary
-        # log_writer.add_summary(summary, i)
+        log_writer.add_summary(summary, i)
 
 
 

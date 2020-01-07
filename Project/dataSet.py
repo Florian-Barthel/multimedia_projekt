@@ -145,5 +145,5 @@ def create(path, batch_size):
 
         return image, gt_boxes
 
-    return dataset.map(get_image_label_and_gt).cache().padded_batch(batch_size, padded_shapes=([image_height, image_width, 3], [None, 4]), padding_values=(0.0, float('NaN')))
+    return dataset.map(get_image_label_and_gt).cache().padded_batch(batch_size, padded_shapes=([image_height, image_width, 3], [None, 4]), padding_values=(0.0, float('NaN'))).repeat()
 

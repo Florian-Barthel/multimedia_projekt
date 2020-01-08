@@ -66,8 +66,7 @@ def calculate_overlap_boxes_tensor(labels_tensor, anchor_grid_tensor, iou):
 def convert_to_annotation_rects_output(anchor_grid, output):
     calc_softmax = softmax(output, axis=-1)
     foreground = np.delete(calc_softmax, [0], axis=-1)
-    filtered_indices = np.where(foreground > 0.95)
-    filtered_indices = np.where(foreground > 0.93)
+    filtered_indices = np.where(foreground > 0.7)
     remove_last = filtered_indices[:4]
     max_boxes = anchor_grid[remove_last]
     return [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
@@ -81,3 +80,19 @@ def convert_to_annotation_rects_label(anchor_grid, labels):
     # * = tuple unpacking
     annotated_boxes = [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
     return annotated_boxes
+
+
+def calculate_adjusted_anchor_grid(ag, adjustments):
+    
+    num_batch_size = tf.shape(adjustments)[0]
+    ag_batched = tf.cast(tf.tile(tf.expand_dims(ag, 0), [num_batch_size, 1, 1, 1, 1, 1]), tf.float64)
+
+    # Inverted regression targets
+    ag_sizes = ag_batched[..., 2:4] - ag_batched[..., 0:2]
+    lower_adjusted = adjustments[..., 0:2] * ag_sizes + ag_batched[..., 0:2]
+    sizes_adjusted = tf.math.exp(adjustments[..., 2:4]) * ag_sizes
+    upper_adjusted = lower_adjusted + sizes_adjusted
+
+    ag_adjusted = tf.concat([lower_adjusted, upper_adjusted], -1)
+    return ag_adjusted
+

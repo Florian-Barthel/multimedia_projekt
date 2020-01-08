@@ -23,10 +23,10 @@ f_map_cols = 10
 scale_factor = 32.0
 scales = [70, 100, 140, 200]
 aspect_ratios = [0.5, 0.75, 1.0, 1.5]
-batch_size = 30
+batch_size = 10
 iou = 0.5
-learning_rate = 0.01
-iterations = 1000
+learning_rate = 0.001
+iterations = 50
 
 negative_example_factor = 10
 
@@ -62,71 +62,29 @@ with tf.keras.backend.get_session() as sess:
 
     images_tensor, gt_labels_tensor = next_element
 
-    images = tf.ones([batch_size, 320, 320, 3])
-
     overlap_labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid, iou)
 
+    probabilities_features = mobilenet.mobile_net_v2()(images_tensor)
+    probabilities = graph.probabilities_output(probabilities_features, anchor_grid)
+    probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(probabilities, overlap_labels_tensor, negative_example_factor)
 
-    features = mobilenet.mobile_net_v2()(images_tensor)
-    #features = tf.ones([batch_size, 10, 10, 1280])    
-    
+    adjustement_features = mobilenet.mobile_net_v2()(images_tensor)
+    adjustments = graph.adjustments_output(adjustement_features, anchor_grid, anchor_grid_tensor)
+    adjustments_loss = graph.adjustments_loss(adjustments, gt_labels_tensor, overlap_labels_tensor, anchor_grid_tensor)
 
-    probabilities = graph.probabilities_output(features, anchor_grid)
-
-    probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(input_tensor=probabilities,
-                                                                                          labels_tensor=overlap_labels_tensor,
-                                                                                          negative_example_factor=negative_example_factor)
-
-
-    adjustments = graph.adjustments_output(features, anchor_grid, anchor_grid_tensor)
-
-
-    adjustments_loss, adjustments_values = graph.adjustments_loss(adjustments, gt_labels_tensor, overlap_labels_tensor, anchor_grid_tensor)
-
-    # graph_vars = tf.global_variables()
-    # for var in tqdm(graph_vars):
-    #     try:
-    #         sess.run(var)
-    #     except:
-    #         print('found uninitialized variable {}'.format(var.name))
-    #         sess.run(tf.initialize_variables([var]))
-
-
-    # print(sess.run(adjustments_loss, feed_dict={handle: train_handle}))
-    # exit()
-    # print("---------------------------------------")
-    # print("---------------------------------------")
-    # print(sess.run(adjustments_loss, feed_dict={handle: train_handle}))
-
-    
-    # print("---------------------------------------")
-    # print("---------------------------------------")
-    # print("---------------------------------------")
-    #  204  254  404  354]
-    # [ 204  229  404  379]
-    # [ 204  204  404  404]
-    # [ 204  154  404  454]
-    #print(sess.run(anchor_grid_tensor))
-
-    #exit()
-
-
-    #adjustments_loss, adjustments_values = graph.adjustments_loss(adjustments, gt_labels_tensor, overlap_labels_tensor, anchor_grid_tensor)
-
-
+    total_loss = tf.cast(probabilities_loss, tf.float64) * adjustments_loss
 
     def optimize(target_loss):
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
-        #optimizer = tf.train.AdamOptimizer()
-        objective = optimizer.minimize(loss=target_loss, var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='adjustments'))
-        #objective = optimizer.minimize(loss=target_loss)
+        objective = optimizer.minimize(loss=target_loss)
         return objective
 
+    optimize = optimize(total_loss)
 
-    optimize = optimize(adjustments_loss)
-
-    tf.summary.scalar('loss', adjustments_loss)
-    tf.summary.scalar('num_predicted', num_predicted)
+    tf.summary.scalar('Total loss', total_loss)
+    tf.summary.scalar('Probabilities loss', probabilities_loss)
+    tf.summary.scalar('Probabilities predicted count', num_predicted)
+    tf.summary.scalar('Adjustments loss', adjustments_loss)
     merged_summary = tf.summary.merge_all()
 
     graph_vars = tf.global_variables()
@@ -137,57 +95,52 @@ with tf.keras.backend.get_session() as sess:
             print('found uninitialized variable {}'.format(var.name))
             sess.run(tf.initialize_variables([var]))
 
-
     # TensorBoard graph summary
-    log_writer = tf.summary.FileWriter(logs_directory, sess.graph, flush_secs=5)
+    log_writer = tf.summary.FileWriter(logs_directory, sess.graph, flush_secs=1)
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
 
-        loss, _, debug_values, summary = sess.run([adjustments_loss, optimize, adjustments_values, merged_summary], feed_dict={handle: train_handle})
+        loss, labels, weights, predicted, _, summary, = sess.run([total_loss, num_labels, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: train_handle})
 
-        progress_bar.set_description(' loss:' + str(np.around(loss, decimals=5)), refresh=True)
-        #print(debug_values)
-        # print(np.sum(debug_values))
-        # print(np.amax(debug_values))
-        # print(np.amin(debug_values))
-        # print(np.shape(debug_values))
-        # progress_bar.set_description(' loss:' + str(np.around(loss, decimals=5)), refresh=True)
-
-        # print("--------------------")
-        # print("--------------------")
-        # print("--------------------")
-        # print("--------------------")
-        #loss, labels, weights, predicted, _, summary, = sess.run([adjustments_loss, num_labels, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: train_handle})
-
-        # description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
-        #     labels) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
-        #     predicted)
-        # progress_bar.set_description(description, refresh=True)
+        description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
+            labels) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
+            predicted)
+        progress_bar.set_description(description, refresh=True)
         # # TensorBoard scalar summary
         log_writer.add_summary(summary, i)
 
 
-
     gt_images_tensor = tf.image.draw_bounding_boxes(images_tensor, gt_labels_tensor)
-    images_result, labels_result, output_result = sess.run([gt_images_tensor, overlap_labels_tensor, calculate_output], feed_dict={handle: test_handle})
+    ag_adjusted_tensor = dataUtil.calculate_adjusted_anchor_grid(anchor_grid_tensor, adjustments)
+
+    images_result, labels_result, probabilities_predicted, adjustments_predicted, ag_adjusted = sess.run([gt_images_tensor, overlap_labels_tensor, probabilities, adjustments, ag_adjusted_tensor], feed_dict={handle: test_handle})
+
+    
+    output_image_size = (1280, 1280)    
 
     test_paths = []
     for i in range(np.shape(images_result)[0]):
         image = Image.fromarray(((images_result[i] + 1) * 127.5).astype(np.uint8), 'RGB')
-        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))
+        image.resize(output_image_size, Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))
 
-        dataUtil.draw_bounding_boxes(image=image,
-                             annotation_rects=dataUtil.convert_to_annotation_rects_label(anchor_grid, labels_result[i]),
-                             color=(0, 255, 255))
+        dataUtil.draw_bounding_boxes(image, dataUtil.convert_to_annotation_rects_label(anchor_grid, labels_result[i]), (0, 255, 255))
+        image.resize(output_image_size, Image.ANTIALIAS).save('test_images/{}_labels.jpg'.format(i))
 
-        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_labels.jpg'.format(i))
+        dataUtil.draw_bounding_boxes(image, dataUtil.convert_to_annotation_rects_output(anchor_grid, probabilities_predicted[i]), (0, 0, 255))
+        image.resize(output_image_size, Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
 
-        dataUtil.draw_bounding_boxes(image=image,
-                                     annotation_rects=dataUtil.convert_to_annotation_rects_output(anchor_grid, output_result[i]),
-                                     color=(0, 0, 255))
+
+
+        image_adjusted = Image.fromarray(((images_result[i] + 1) * 127.5).astype(np.uint8), 'RGB')
         
-        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
+        dataUtil.draw_bounding_boxes(image_adjusted, dataUtil.convert_to_annotation_rects_label(ag_adjusted[i], labels_result[i]), (0, 255, 255))
+        image_adjusted.resize(output_image_size, Image.ANTIALIAS).save('test_images/{}_labels_adjusted.jpg'.format(i))        
+
+        dataUtil.draw_bounding_boxes(image_adjusted, dataUtil.convert_to_annotation_rects_output(ag_adjusted[i], probabilities_predicted[i]), (0, 0, 255))
+        image_adjusted.resize(output_image_size, Image.ANTIALIAS).save('test_images/{}_estimates_adjusted.jpg'.format(i))
+
+
         test_paths.append('test_images/{}_estimates.jpg'.format(i))
 
     # Saving detections for evaluation purposes
-    evaluation.prepare_detections(output_result, anchor_grid, test_paths, batch_size)
+    evaluation.prepare_detections(probabilities_predicted, anchor_grid, test_paths, batch_size)

@@ -118,7 +118,6 @@ def create(path, batch_size):
 
     def random_image_augmentation(image, bb_images):
         augmentations = [random_rotate,
-                         random_flip,
                          random_quality,
                          random_color,
                          random_crop]
@@ -128,6 +127,9 @@ def create(path, batch_size):
         
         for augmentation in augmentations:
             image, bb_images = tf.cond(tf.random_uniform([], 0.0, 1.0) < augmentation_factor, lambda: augmentation(image, bb_images), lambda: no_augment(image, bb_images))
+
+        # Avoid Bounding Box regression to tend into one direction
+        image, bb_images = tf.cond(tf.random_uniform([], 0.0, 1.0) < 0.5, lambda: random_flip(image, bb_images), lambda: no_augment(image, bb_images))
 
         return image, bb_images
 

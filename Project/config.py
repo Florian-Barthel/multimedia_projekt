@@ -6,5 +6,5 @@ aspect_ratios = [1.0, 1.5, 2.0]
 batch_size = 30
 iou = 0.5
 learning_rate = 0.001
-iterations = 5000
+iterations = 1000
 negative_example_factor = 10

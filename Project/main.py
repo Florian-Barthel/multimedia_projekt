@@ -23,14 +23,14 @@ url = tb.launch()
 current_time = datetime.now()
 logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
 
-
 anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
                                      f_map_cols=config.f_map_cols,
                                      scale_factor=config.scale_factor,
                                      scales=config.scales,
                                      aspect_ratios=config.aspect_ratios)
 
-train_dataset = dataSet.create("./dataset_mmp/train", anchor_grid).batch(config.batch_size)
+# train_dataset = dataSet.create("./dataset_mmp/train", anchor_grid).batch(config.batch_size)
+train_dataset = dataSet.create("C:/Users/Florian/Desktop/train_v4", anchor_grid).batch(config.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
 # test_dataset = dataSet.create("./dataset_mmp/test", anchor_grid).batch(1543)
 
 handle = tf.placeholder(tf.string, shape=[])

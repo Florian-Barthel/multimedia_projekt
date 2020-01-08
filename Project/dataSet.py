@@ -14,7 +14,7 @@ augmentation_factor = 0.15
 # [batch_size, 0] are raw images, [batch_size, 1] are ground truth annotated images
 def create(path, anchor_grid):
     
-    dataset = tf.data.Dataset.list_files(path+'/*.jpg')
+    dataset = tf.data.Dataset.list_files(path + '/*.jpg')
 
     def create_label_array(lines):
         rects = []
@@ -36,7 +36,7 @@ def create(path, anchor_grid):
 
     def parse_image(file_name):
         image = tf.io.read_file(file_name)
-        image = tf.image.decode_jpeg(image)
+        image = tf.image.decode_jpeg(image, channels=3)
         h = tf.shape(image)[0]
         w = tf.shape(image)[1]
         image = tf.pad(image, [[0, image_height - h], [0, image_width - w], [0, 0]], mode='CONSTANT', constant_values=0)
@@ -68,7 +68,7 @@ def create(path, anchor_grid):
 
 
     def random_rotate(image, bb_images):
-        random_angle = tf.random.uniform([1], minval = -(np.pi / 4.0), maxval = (np.pi / 4.0))
+        random_angle = tf.random.uniform([1], minval=-(np.pi / 4.0), maxval=(np.pi / 4.0))
         random_rotate_matrix = tf.contrib.image.angles_to_projective_transforms(random_angle, tf.cast(tf.shape(image)[0], tf.float32), tf.cast(tf.shape(image)[1], tf.float32))
         rotated_image = tf.contrib.image.transform(image, random_rotate_matrix)
         rotated_bb_images = tf.contrib.image.transform(bb_images, random_rotate_matrix)
@@ -150,7 +150,6 @@ def create(path, anchor_grid):
 
         return tf.stack([image, image_annotated_gt]), iou_boxes
 
-
-    dataset = dataset.map(get_image_label_and_gt).cache()
+    dataset = dataset.map(get_image_label_and_gt)
 
     return dataset.repeat()

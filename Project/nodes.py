@@ -22,6 +22,12 @@ def convolution(input_tensor):
         bias_initializer=tf.constant_initializer(0.0))
 
 
+# def weighted_sum(input_tensor_1, input_tensor_2):
+#     a = tf.Variable(initial_value=tf.constant(0.5), trainable=True, dtype=tf.float32)
+#     b = tf.Variable(initial_value=tf.constant(0.5), trainable=True, dtype=tf.float32)
+#     return tf.math.add(tf.math.multiply(input_tensor_1, a), tf.math.multiply(input_tensor_2, b))
+
+
 def reshape(input_tensor):
     result = tf.reshape(input_tensor, [tf.shape(input_tensor)[0],
                                        config.f_map_rows,

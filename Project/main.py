@@ -30,7 +30,8 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
                                      aspect_ratios=config.aspect_ratios)
 
 # train_dataset = dataSet.create("./dataset_mmp/train", anchor_grid).batch(config.batch_size)
-train_dataset = dataSet.create("C:/Users/Florian/Desktop/train_v4", anchor_grid).batch(config.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+train_dataset = dataSet.create("C:/Users/Florian/Desktop/train_v4_filter_crowd_max_5", anchor_grid).batch(
+    config.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
 # test_dataset = dataSet.create("./dataset_mmp/test", anchor_grid).batch(1543)
 
 handle = tf.placeholder(tf.string, shape=[])

@@ -131,3 +131,4 @@ with tf.Session(config=config) as sess:
 
     # Saving detections for evaluation purposes
     evaluation.prepare_detections(output_result, anchor_grid, test_paths, batch_size)
+    evaluation.evaluate('eval_script/detections.txt', 'dataset_mmp')

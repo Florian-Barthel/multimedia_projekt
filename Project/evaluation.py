@@ -1,7 +1,10 @@
+import os
 from scipy.special import softmax
 import numpy as np
 from annotationRect import AnnotationRect
 import geometry
+import eval_script.flickr_io as fio
+import eval_detections as eval
 
 # Preparing data for the evaluation script
 # The script can be run from the Project directory by invoking:
@@ -82,3 +85,73 @@ def prepare_detections(output, anchor_grid, image_paths, num_test_images, nms_th
         nms_boxes.append(non_maximum_suppression(boxes_dict, nms_threshold))
         save_boxes(nms_boxes[i], image_paths[i])
     return nms_boxes
+
+# Using code from the supplied eval_detections.py to evaluate the model in runtime
+def evaluate(detection, dset_basedir, resfile='', genplots=False, overwrite=False, clip_thresh=None):
+    if genplots and resfile == '':
+        print('You need to specify a valid path prefix for the --resfile parameter in order to generate plots')
+        exit(1)
+
+    # make sure the parent directory of the file prefix exists (if specified)
+    if resfile != '':
+        eval.check_resfile_prefix(resfile)
+
+    print('Loading classmap...')
+    clsid2name = {0: 'person'}
+    clsname2id = {'person': 0}
+
+    print('Loading groundtruth data...')
+    img2gts = fio.load_gts(dset_basedir, 'test')
+    gts_num_images = 0
+    gts_num_instances = 0
+    for gts in img2gts.values():
+        gts_num_images += 1
+        gts_num_instances += len(gts)
+    print('# of images:     {0}'.format(gts_num_images))
+    print('# of detections: {0}'.format(gts_num_instances))
+
+    print('Loading detections...')
+    img2dets = fio.load_detections(detection)
+    det_num_images = 0
+    det_num_instances = 0
+    for dets in img2dets.values():
+        det_num_images += 1
+        det_num_instances += len(dets)
+    print('# of images:     {0}'.format(det_num_images))
+    print('# of detections: {0}'.format(det_num_instances))
+
+    img2gts, img2dets = eval.remove_difficult(img2gts, img2dets)
+
+    # Make sure that all detections have an image name that can be mapped to a GT
+    eval.check_imgname_mapping(img2dets, img2gts)
+
+    # clip detections (if desired)
+    eval.clip_detections(img2dets, clip_thresh)
+
+    # compute ap for each class
+    output = ['{0:>20} | {1:<8}'.format('Classname', 'AP')]
+    output += ['-' * 32]
+    aps = np.zeros(len(clsid2name), dtype=np.float32)
+    for clsid in clsid2name.keys():
+        precision, recall = eval.pr_curve_for_class(img2dets, img2gts, clsid)
+        aps[clsid] = np.trapz(precision, recall)
+        if genplots:
+            eval.plot_pr_curve(clsid2name[clsid], precision, recall, aps[clsid], cmdargs.resfile, cmdargs.overwrite)
+        output += ['{0:>20} | {1:<6.4f}'.format(clsid2name[clsid], aps[clsid])]
+    mAP = np.mean(aps)
+    output += ['-' * 32]
+    output += ['{0:>20} | {1:<6.4f}'.format('mAP', mAP)]
+    out_resfile = None
+    if resfile != '':
+        respath = resfile + '_results.txt'
+        if os.path.exists(respath) and not overwrite:
+            print('WARNING: Output file already exists and will not overwritten (to override, set --overwrite 1)')
+            print('  ' + respath)
+        else:
+            out_resfile = open(respath, 'w')
+    for line_out in output:
+        print(line_out)
+        if out_resfile is not None:
+            print(line_out, file=out_resfile)
+    if out_resfile is not None:
+        out_resfile.close()

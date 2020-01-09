@@ -8,6 +8,7 @@ image_height = 320
 image_width = 320
 
 crop_factor = 0.1
+# percentage of applied augmentations
 augmentation_factor = 0.15
 
 # returns images of shape [batch_size, 2, 320, 320, 3] and labels of shape [batch_size, f_map_rows, f_map_cols, len(scales), len(aspect_ratios)]
@@ -66,7 +67,6 @@ def create(path, anchor_grid):
 
         return iou_boxes, np.array(gt_boxes, dtype=np.float32)
 
-
     def random_rotate(image, bb_images):
         random_angle = tf.random.uniform([1], minval=-(np.pi / 4.0), maxval=(np.pi / 4.0))
         random_rotate_matrix = tf.contrib.image.angles_to_projective_transforms(random_angle, tf.cast(tf.shape(image)[0], tf.float32), tf.cast(tf.shape(image)[1], tf.float32))
@@ -105,7 +105,7 @@ def create(path, anchor_grid):
         bb_images = tf.image.flip_left_right(bb_images)
         return image, bb_images        
 
-
+    # TODO: might decrease performance
     def random_quality(image, bb_images):
         image = tf.image.random_jpeg_quality(image, 50, 100)
         return image, bb_images

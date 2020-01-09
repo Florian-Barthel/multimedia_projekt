@@ -4,7 +4,7 @@ from PIL import Image
 import os
 from annotationRect import AnnotationRect
 
-folder = 'C:/Users/Florian/Desktop/train_v4'
+folder = 'C:/Users/Florian/Desktop/train_v4_filter_crowd_max_5_min_ratio'
 
 
 def __convert_file_annotation_rect(location):
@@ -32,8 +32,8 @@ def get_dict_from_folder(num):
     return result_dict
 
 
-def get_data():
-    items = get_dict_from_folder(1000)
+def get_data(num):
+    items = get_dict_from_folder(num)
     images = []
     gt_rects = []
     for path in items:
@@ -52,10 +52,10 @@ def get_data():
 
 
 def test_labels(num):
-    data = get_data()
+    data = get_data(num * 2)
     (test_images, gt_annotation_rects) = data
 
-    for i in range(100):
+    for i in range(num):
         image = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
         dataUtil.draw_bounding_boxes(image=image,
                                      annotation_rects=gt_annotation_rects[i],
@@ -68,4 +68,4 @@ def test_labels(num):
 '''
 Number of Images to test
 '''
-test_labels(100)
+test_labels(1000)

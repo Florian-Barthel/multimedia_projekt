@@ -23,10 +23,10 @@ f_map_cols = 10
 scale_factor = 32.0
 scales = [70, 100, 140, 200]
 aspect_ratios = [0.5, 0.75, 1.0, 1.5]
-batch_size = 10
+batch_size = 20
 iou = 0.5
-learning_rate = 0.001
-iterations = 50
+learning_rate = 0.0001
+iterations = 150
 
 negative_example_factor = 10
 
@@ -64,24 +64,23 @@ with tf.keras.backend.get_session() as sess:
 
     overlap_labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid, iou)
 
-    probabilities_features = mobilenet.mobile_net_v2()(images_tensor)
-    probabilities = graph.probabilities_output(probabilities_features, anchor_grid)
+    probabilities = graph.probabilities_output(mobilenet.mobile_net_v2()(images_tensor), anchor_grid)
     probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(probabilities, overlap_labels_tensor, negative_example_factor)
 
-    adjustement_features = mobilenet.mobile_net_v2()(images_tensor)
-    adjustments = graph.adjustments_output(adjustement_features, anchor_grid, anchor_grid_tensor)
+    adjustments = graph.adjustments_output(mobilenet.mobile_net_v2()(images_tensor), anchor_grid, anchor_grid_tensor)
     adjustments_loss = graph.adjustments_loss(adjustments, gt_labels_tensor, overlap_labels_tensor, anchor_grid_tensor)
 
-    total_loss = tf.cast(probabilities_loss, tf.float64) * adjustments_loss
+    #total_loss = tf.cast(probabilities_loss, tf.float64) * adjustments_loss
+
 
     def optimize(target_loss):
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
         objective = optimizer.minimize(loss=target_loss)
         return objective
 
-    optimize = optimize(total_loss)
+    probabilities_optimize = optimize(probabilities_loss)
+    adjustments_optimize = optimize(adjustments_loss)
 
-    tf.summary.scalar('Total loss', total_loss)
     tf.summary.scalar('Probabilities loss', probabilities_loss)
     tf.summary.scalar('Probabilities predicted count', num_predicted)
     tf.summary.scalar('Adjustments loss', adjustments_loss)
@@ -100,7 +99,7 @@ with tf.keras.backend.get_session() as sess:
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
 
-        loss, labels, weights, predicted, _, summary, = sess.run([total_loss, num_labels, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: train_handle})
+        loss, labels, weights, predicted, _, _, summary, = sess.run([[probabilities_loss, adjustments_loss], num_labels, num_weights, num_predicted, probabilities_optimize, adjustments_optimize, merged_summary], feed_dict={handle: train_handle})
 
         description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
             labels) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(

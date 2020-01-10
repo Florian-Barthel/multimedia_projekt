@@ -71,7 +71,7 @@ def adjustments_output(features, ag, ag_tensor):
                                                kernel_initializer=tf.constant_initializer(0.0),
                                                kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005),
                                                bias_initializer=tf.constant_initializer(0.0),
-                                               bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005)) + 1.0
+                                               bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005))
         
         return tf.reshape(features_convoluted, [num_batch_size,
                                                 ag_shape[0],

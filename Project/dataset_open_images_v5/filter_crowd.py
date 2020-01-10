@@ -7,8 +7,8 @@ Filters all images that have more than max_labels labels
 '''
 max_labels = 5
 
-src_folder = 'C:/Users/Florian/Desktop/train_v4'
-dest_folder = 'C:/Users/Florian/Desktop/train_v4_filter_crowd_max_5'
+src_folder = 'C:/Users/Florian/Desktop/dataset_2'
+dest_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd'
 
 num_kept = 0
 num_filtered = 0

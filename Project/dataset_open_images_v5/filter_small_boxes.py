@@ -10,9 +10,9 @@ Filters all images that have more than max_labels labels
 min_size = 1000
 
 
-src_folder = 'C:/Users/Florian/Desktop/train_v4_filter_crowd_max_5'
-dest_folder = 'C:/Users/Florian/Desktop/train_v4_filter_crowd_max_5_min'
-remove_folder = 'C:/Users/Florian/Desktop/train_v4_filter_crowd_max_5_min_remove'
+src_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd'
+dest_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd_min'
+remove_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd_min_remove'
 
 num_kept = 0
 num_filtered = 0

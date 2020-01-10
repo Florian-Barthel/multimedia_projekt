@@ -107,7 +107,7 @@ def create(path, anchor_grid):
 
     # TODO: might decrease performance
     def random_quality(image, bb_images):
-        image = tf.image.random_jpeg_quality(image, 50, 100)
+        image = tf.image.random_jpeg_quality(image, 80, 100)
         return image, bb_images
 
 

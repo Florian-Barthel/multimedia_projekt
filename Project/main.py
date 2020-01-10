@@ -13,6 +13,7 @@ from datetime import datetime
 import graph
 import anchorgrid
 import evaluation
+import eval_script.eval_detections_own as validation
 from tensorboard import program
 
 tb = program.TensorBoard()
@@ -22,6 +23,11 @@ url = tb.launch()
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
 current_time = datetime.now()
 logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
+detection_directory = 'eval_script/detections/' + current_time.strftime('%d-%m-%Y_%H-%M-%S') + '/'
+validation_directory = 'dataset_mmp'
+
+if not os.path.exists(detection_directory):
+    os.makedirs(detection_directory)
 
 anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
                                      f_map_cols=config.f_map_cols,
@@ -30,7 +36,7 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
                                      aspect_ratios=config.aspect_ratios)
 
 # train_dataset = dataSet.create("./dataset_mmp/train", anchor_grid).batch(config.batch_size)
-train_dataset = dataSet.create("C:/Users/Florian/Desktop/train_v4_filter_crowd_max_5_min", anchor_grid).batch(
+train_dataset = dataSet.create("C:/Users/Florian/Desktop/dataset_2_crowd_min", anchor_grid).batch(
     config.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
 # test_dataset = dataSet.create("./dataset_mmp/test", anchor_grid).batch(1543)
 
@@ -71,6 +77,8 @@ with tf.Session() as sess:
     '''
     tf.summary.scalar('loss', calculate_loss)
     tf.summary.scalar('num_predicted', num_predicted)
+    mAP = 0
+    tf.summary.scalar('mAP', mAP)
     merged_summary = tf.summary.merge_all()
     log_writer = tf.summary.FileWriter(logs_directory, sess.graph)
 
@@ -84,23 +92,36 @@ with tf.Session() as sess:
             # print('found uninitialized variable {}'.format(var.name))
             sess.run(tf.compat.v1.variables_initializer([var]))
 
+    validation_data = dataUtil.get_validation_data(200, anchor_grid)
+
     progress_bar_train = tqdm(range(config.iterations))
     for i in progress_bar_train:
+        progress_bar_train.set_description('TRAIN | ')
         loss, labels, weights, predicted, _, summary = sess.run(
             [calculate_loss, num_labels, num_weights, num_predicted, optimize, merged_summary],
             feed_dict={handle: train_handle})
 
-        description = 'TRAIN | '
-        progress_bar_train.set_description(description)
+        '''
+        Run validation every 500 iterations
+        '''
+        # TODO: Save model
+        if (i + 1) % 501 == 0:
+            detection_file = str(i) + '_detection.txt'
+            print('validation...')
+            for j in range(len(validation_data)):
+                (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[j]
+                output = sess.run(calculate_output, feed_dict={no_gts_images_tensor: test_images})
+                evaluation.prepare_detections(output, anchor_grid, test_paths, detection_directory + detection_file)
+            mAP = validation.run(detection_directory + detection_file, detection_directory + str(i), validation_directory) * 100
+            print('mAP: ' + str(mAP))
         log_writer.add_summary(summary, i)
 
-    validation_data = dataUtil.get_validation_data(100, anchor_grid)
     progress_bar_validate = tqdm(range(len(validation_data)))
     progress_bar_validate.set_description('VAL   | ')
     for i in progress_bar_validate:
         (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[i]
         output = sess.run(calculate_output, feed_dict={no_gts_images_tensor: test_images})
-        evaluation.prepare_detections(output, anchor_grid, test_paths)
+        evaluation.prepare_detections(output, anchor_grid, test_paths, detection_directory + config.iterations + '_detection.txt')
 
     num_view_images = 30
     progress_bar_save = tqdm(range(num_view_images))

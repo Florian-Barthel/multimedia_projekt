@@ -21,11 +21,11 @@ url = tb.launch()
 f_map_rows = 10
 f_map_cols = 10
 scale_factor = 32.0
-scales = [70, 100, 140, 200]
+scales = [50, 80, 100, 150]
 aspect_ratios = [0.5, 0.75, 1.0, 1.5]
 batch_size = 20
 iou = 0.5
-learning_rate = 0.0001
+learning_rate = 0.0005
 iterations = 150
 
 negative_example_factor = 10
@@ -56,34 +56,33 @@ test_iterator = test_dataset.make_one_shot_iterator()
 
 next_element = iterator.get_next()
 
-with tf.keras.backend.get_session() as sess:
+with tf.Session(config) as sess:
     train_handle = sess.run(train_iterator.string_handle())
     test_handle = sess.run(test_iterator.string_handle())
 
     images_tensor, gt_labels_tensor = next_element
 
-    overlap_labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid, iou)
+    labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid, iou)
 
-    probabilities = graph.probabilities_output(mobilenet.mobile_net_v2()(images_tensor), anchor_grid)
-    probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(probabilities, overlap_labels_tensor, negative_example_factor)
+    probabilities_features = mobilenet.mobile_net_v2()(images_tensor)
+    probabilities = graph.probabilities_output(probabilities_features, anchor_grid)
+    probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(probabilities, labels_tensor, negative_example_factor)
 
-    adjustments = graph.adjustments_output(mobilenet.mobile_net_v2()(images_tensor), anchor_grid, anchor_grid_tensor)
-    adjustments_loss = graph.adjustments_loss(adjustments, gt_labels_tensor, overlap_labels_tensor, anchor_grid_tensor)
-
-    #total_loss = tf.cast(probabilities_loss, tf.float64) * adjustments_loss
-
+    adjustments_features = mobilenet.mobile_net_v2()(images_tensor)
+    adjustments = graph.adjustments_output(adjustments_features, anchor_grid, anchor_grid_tensor)
+    adjustments_loss = graph.adjustments_loss(adjustments, gt_labels_tensor, labels_tensor, anchor_grid_tensor)
 
     def optimize(target_loss):
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
-        objective = optimizer.minimize(loss=target_loss)
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+        objective = optimizer.minimize(target_loss)
         return objective
 
     probabilities_optimize = optimize(probabilities_loss)
     adjustments_optimize = optimize(adjustments_loss)
 
-    tf.summary.scalar('Probabilities loss', probabilities_loss)
-    tf.summary.scalar('Probabilities predicted count', num_predicted)
-    tf.summary.scalar('Adjustments loss', adjustments_loss)
+    tf.summary.scalar('probabilities/Loss', probabilities_loss)
+    tf.summary.scalar('probabilities/Number of positivies', num_predicted)
+    tf.summary.scalar('adjustments/Loss', adjustments_loss)
     merged_summary = tf.summary.merge_all()
 
     graph_vars = tf.global_variables()
@@ -112,10 +111,9 @@ with tf.keras.backend.get_session() as sess:
     gt_images_tensor = tf.image.draw_bounding_boxes(images_tensor, gt_labels_tensor)
     ag_adjusted_tensor = dataUtil.calculate_adjusted_anchor_grid(anchor_grid_tensor, adjustments)
 
-    images_result, labels_result, probabilities_predicted, adjustments_predicted, ag_adjusted = sess.run([gt_images_tensor, overlap_labels_tensor, probabilities, adjustments, ag_adjusted_tensor], feed_dict={handle: test_handle})
+    images_result, labels_result, probabilities_predicted, adjustments_predicted, ag_adjusted = sess.run([gt_images_tensor, labels_tensor, probabilities, adjustments, ag_adjusted_tensor], feed_dict={handle: test_handle})
 
-    
-    output_image_size = (1280, 1280)    
+    output_image_size = (720, 720)    
 
     test_paths = []
     for i in range(np.shape(images_result)[0]):
@@ -127,7 +125,6 @@ with tf.keras.backend.get_session() as sess:
 
         dataUtil.draw_bounding_boxes(image, dataUtil.convert_to_annotation_rects_output(anchor_grid, probabilities_predicted[i]), (0, 0, 255))
         image.resize(output_image_size, Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
-
 
 
         image_adjusted = Image.fromarray(((images_result[i] + 1) * 127.5).astype(np.uint8), 'RGB')

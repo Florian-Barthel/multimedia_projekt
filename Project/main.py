@@ -4,7 +4,7 @@ from PIL import Image
 import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
 import dataSet
 import config

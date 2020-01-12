@@ -33,7 +33,9 @@ if __name__ == '__main__':
     gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
     config = tf.ConfigProto(gpu_options=gpu_options)
     with tf.Session(config=config) as sess:
-        saver = tf.train.import_meta_graph(model_path + "model.meta")
-        saver.restore(sess, tf.train.latest_checkpoint(model_path))
+        saver = fileUtil.load_model(model_path=model_path, sess=sess)
         graph = tf.get_default_graph()
-        fileUtil.save_model(saver, sess)
+        graph_vars = tf.global_variables()
+        for var in graph_vars:
+            print(var)
+        fileUtil.save_model(saver=saver, sess=sess)

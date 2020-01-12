@@ -4,6 +4,7 @@ from PIL import Image
 import dataUtil
 from datetime import datetime
 from tensorboard import program
+import tensorflow as tf
 
 image_path = 'test_images'
 max_drawn_images = 10
@@ -17,8 +18,10 @@ model_directory = './models/'
 def save_model(saver, sess):
     saver.save(sess, model_directory + current_time.strftime('%d-%m-%Y_%H-%M-%S') + '/model')
 
-def load_model():
-    print("Loading model...")
+def load_model(model_path, sess):
+    saver = tf.train.import_meta_graph(model_path + "model.meta")
+    saver.restore(sess, tf.train.latest_checkpoint(model_path))
+    return saver
 
 def draw_images(test_images, test_labels, output, anchor_grid, gt_annotation_rects, nms_boxes, num_test_images):
     if not os.path.exists(image_path):

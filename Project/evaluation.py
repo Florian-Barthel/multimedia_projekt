@@ -136,7 +136,7 @@ def evaluate(detection, dset_basedir, resfile='', genplots=False, overwrite=Fals
         precision, recall = eval.pr_curve_for_class(img2dets, img2gts, clsid)
         aps[clsid] = np.trapz(precision, recall)
         if genplots:
-            eval.plot_pr_curve(clsid2name[clsid], precision, recall, aps[clsid], cmdargs.resfile, cmdargs.overwrite)
+            eval.plot_pr_curve(clsid2name[clsid], precision, recall, aps[clsid], resfile, overwrite)
         output += ['{0:>20} | {1:<6.4f}'.format(clsid2name[clsid], aps[clsid])]
     mAP = np.mean(aps)
     output += ['-' * 32]

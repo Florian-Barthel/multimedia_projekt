@@ -23,7 +23,7 @@ f_map_cols = 10
 scale_factor = 32.0
 scales = [50, 80, 100, 150]
 aspect_ratios = [0.5, 0.75, 1.0, 1.5]
-batch_size = 20
+batch_size = 10
 iou = 0.5
 learning_rate = 0.0005
 iterations = 150
@@ -56,7 +56,7 @@ test_iterator = test_dataset.make_one_shot_iterator()
 
 next_element = iterator.get_next()
 
-with tf.Session(config) as sess:
+with tf.Session(config=config) as sess:
     train_handle = sess.run(train_iterator.string_handle())
     test_handle = sess.run(test_iterator.string_handle())
 
@@ -64,21 +64,23 @@ with tf.Session(config) as sess:
 
     labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid, iou)
 
-    probabilities_features = mobilenet.mobile_net_v2()(images_tensor)
-    probabilities = graph.probabilities_output(probabilities_features, anchor_grid)
+    features = mobilenet.mobile_net_v2()(images_tensor)
+
+    probabilities = graph.probabilities_output(features, anchor_grid)
     probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(probabilities, labels_tensor, negative_example_factor)
 
-    adjustments_features = mobilenet.mobile_net_v2()(images_tensor)
-    adjustments = graph.adjustments_output(adjustments_features, anchor_grid, anchor_grid_tensor)
+    adjustments = graph.adjustments_output(features, anchor_grid, anchor_grid_tensor)
     adjustments_loss = graph.adjustments_loss(adjustments, gt_labels_tensor, labels_tensor, anchor_grid_tensor)
+
+    total_loss = probabilities_loss * adjustments_loss
 
     def optimize(target_loss):
         optimizer = tf.train.GradientDescentOptimizer(learning_rate)
         objective = optimizer.minimize(target_loss)
         return objective
 
-    probabilities_optimize = optimize(probabilities_loss)
-    adjustments_optimize = optimize(adjustments_loss)
+    optimize = optimize(total_loss)
+    
 
     tf.summary.scalar('probabilities/Loss', probabilities_loss)
     tf.summary.scalar('probabilities/Number of positivies', num_predicted)
@@ -98,7 +100,7 @@ with tf.Session(config) as sess:
     progress_bar = tqdm(range(iterations))
     for i in progress_bar:
 
-        loss, labels, weights, predicted, _, _, summary, = sess.run([[probabilities_loss, adjustments_loss], num_labels, num_weights, num_predicted, probabilities_optimize, adjustments_optimize, merged_summary], feed_dict={handle: train_handle})
+        loss, labels, weights, predicted, _, summary, = sess.run([[total_loss, probabilities_loss, adjustments_loss], num_labels, num_weights, num_predicted, optimize, merged_summary], feed_dict={handle: train_handle})
 
         description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
             labels) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(

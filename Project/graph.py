@@ -62,7 +62,7 @@ def adjustments_output(features, ag, ag_tensor):
         ag_shape = np.shape(ag)
         num_batch_size = tf.shape(features)[0]
 
-        features_convoluted = tf.layers.conv2d(inputs=tf.cast(features, tf.float64),
+        features_convoluted = tf.layers.conv2d(inputs=tf.cast(features, tf.float32),
                                                filters=ag_shape[2] * ag_shape[3] * 4,
                                                kernel_size=1,
                                                strides=1,
@@ -88,11 +88,11 @@ def adjustments_loss(adjustments, gts, labels, ag):
 
     mask = tf.cast(tf.reshape(labels, [num_batch_size, num_anchors]), tf.bool)
 
-    gts = tf.cast(gts, tf.float64) * tf.constant([image_height, image_width, image_height, image_width], tf.float64)
+    gts = tf.cast(gts, tf.float32) * tf.constant([image_height, image_width, image_height, image_width], tf.float32)
     gts = tf.tile(tf.expand_dims(gts, 1), [1, num_anchors, 1, 1])
     gt_sizes = gts[..., 2:4] - gts[..., 0:2]
 
-    ag_batched = tf.cast(tf.tile(tf.expand_dims(ag, 0), [num_batch_size, 1, 1, 1, 1, 1]), tf.float64)
+    ag_batched = tf.cast(tf.tile(tf.expand_dims(ag, 0), [num_batch_size, 1, 1, 1, 1, 1]), tf.float32)
     ag_batched = tf.reshape(ag_batched, [num_batch_size, num_anchors, 4])
     ag_batched = tf.tile(tf.expand_dims(ag_batched, -2), [1, 1, num_max_gts, 1])
     anchor_grid_sizes = ag_batched[..., 2:4] - ag_batched[..., 0:2]
@@ -104,11 +104,11 @@ def adjustments_loss(adjustments, gts, labels, ag):
     scale_targets = tf.math.log((gt_sizes / anchor_grid_sizes))
 
     targets = tf.concat([offset_targets, scale_targets], -1)
-    targets = tf.where(tf.math.is_nan(targets), tf.fill(tf.shape(targets), tf.constant(float("Inf"), tf.float64)), targets)
+    targets = tf.where(tf.math.is_nan(targets), tf.fill(tf.shape(targets), tf.constant(float("Inf"), tf.float32)), targets)
     targets = tf.reduce_min(targets, -2)
     targets = tf.boolean_mask(targets, mask)
 
     regression_loss = tf.losses.mean_squared_error(targets, adjustments)
     regularization_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='adjustments'))
 
-    return tf.cast(regression_loss, tf.float64) + regularization_loss
+    return tf.cast(regression_loss, tf.float32) + regularization_loss

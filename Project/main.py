@@ -35,22 +35,18 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
                                      scales=config.scales,
                                      aspect_ratios=config.aspect_ratios)
 
-# train_dataset = dataSet.create("./dataset_mmp/train", anchor_grid).batch(config.batch_size)
 train_dataset = dataSet.create("./dataset_2_crowd_min ", anchor_grid).batch(
     config.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
-# test_dataset = dataSet.create("./dataset_mmp/test", anchor_grid).batch(1543)
 
 handle = tf.placeholder(tf.string, shape=[])
 iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
 
 train_iterator = train_dataset.make_one_shot_iterator()
-# test_iterator = test_dataset.make_one_shot_iterator()
 
 next_element = iterator.get_next()
 
 with tf.Session() as sess:
     train_handle = sess.run(train_iterator.string_handle())
-    # test_handle = sess.run(test_iterator.string_handle())
 
     images_tensor, labels_tensor = next_element
 
@@ -89,7 +85,6 @@ with tf.Session() as sess:
         try:
             sess.run(var)
         except:
-            # print('found uninitialized variable {}'.format(var.name))
             sess.run(tf.compat.v1.variables_initializer([var]))
 
     validation_data = dataUtil.get_validation_data(200, anchor_grid)

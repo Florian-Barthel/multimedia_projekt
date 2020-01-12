@@ -36,7 +36,7 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
                                      aspect_ratios=config.aspect_ratios)
 
 # train_dataset = dataSet.create("./dataset_mmp/train", anchor_grid).batch(config.batch_size)
-train_dataset = dataSet.create("C:/Users/Florian/Desktop/dataset_2_crowd_min", anchor_grid).batch(
+train_dataset = dataSet.create("C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio", anchor_grid).batch(
     config.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
 # test_dataset = dataSet.create("./dataset_mmp/test", anchor_grid).batch(1543)
 
@@ -121,7 +121,7 @@ with tf.Session() as sess:
     for i in progress_bar_validate:
         (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[i]
         output = sess.run(calculate_output, feed_dict={no_gts_images_tensor: test_images})
-        evaluation.prepare_detections(output, anchor_grid, test_paths, detection_directory + config.iterations + '_detection.txt')
+        evaluation.prepare_detections(output, anchor_grid, test_paths, detection_directory + str(config.iterations) + '_detection.txt')
 
     num_view_images = 30
     progress_bar_save = tqdm(range(num_view_images))

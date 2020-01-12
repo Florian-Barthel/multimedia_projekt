@@ -1,23 +1,21 @@
 import numpy as np
-import random
 from annotationRect import AnnotationRect
 import geometry
 import tensorflow as tf
-from tensorflow.python.ops import math_ops
-from tensorflow.python.ops import array_ops
-from tensorflow.python.framework import ops
+import config
 
 image_height = 320
 image_width = 320
 
 crop_factor = 0.1
+# percentage of applied augmentations
 augmentation_factor = 0.15
 
 # returns images of shape [batch_size, 2, 320, 320, 3] and labels of shape [batch_size, f_map_rows, f_map_cols, len(scales), len(aspect_ratios)]
 # [batch_size, 0] are raw images, [batch_size, 1] are ground truth annotated images
-def create(path, anchor_grid, iou):
+def create(path, anchor_grid):
     
-    dataset = tf.data.Dataset.list_files(path+'/*.jpg')
+    dataset = tf.data.Dataset.list_files(path + '/*.jpg')
 
     def create_label_array(lines):
         rects = []
@@ -39,7 +37,7 @@ def create(path, anchor_grid, iou):
 
     def parse_image(file_name):
         image = tf.io.read_file(file_name)
-        image = tf.image.decode_jpeg(image)
+        image = tf.image.decode_jpeg(image, channels=3)
         h = tf.shape(image)[0]
         w = tf.shape(image)[1]
         image = tf.pad(image, [[0, image_height - h], [0, image_width - w], [0, 0]], mode='CONSTANT', constant_values=0)
@@ -65,13 +63,12 @@ def create(path, anchor_grid, iou):
             gt_boxes.append([float(gt_box.y1) / image_height, float(gt_box.x1) / image_width, float(gt_box.y2) / image_height, float(gt_box.x2) / image_width])
 
         max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_ar_boxes)
-        iou_boxes = (max_overlaps > iou).astype(np.int32)
+        iou_boxes = (max_overlaps > config.iou).astype(np.int32)
 
         return iou_boxes, np.array(gt_boxes, dtype=np.float32)
 
-
     def random_rotate(image, bb_images):
-        random_angle = tf.random.uniform([1], minval = -(np.pi / 4.0), maxval = (np.pi / 4.0))
+        random_angle = tf.random.uniform([1], minval=-(np.pi / 4.0), maxval=(np.pi / 4.0))
         random_rotate_matrix = tf.contrib.image.angles_to_projective_transforms(random_angle, tf.cast(tf.shape(image)[0], tf.float32), tf.cast(tf.shape(image)[1], tf.float32))
         rotated_image = tf.contrib.image.transform(image, random_rotate_matrix)
         rotated_bb_images = tf.contrib.image.transform(bb_images, random_rotate_matrix)
@@ -108,9 +105,9 @@ def create(path, anchor_grid, iou):
         bb_images = tf.image.flip_left_right(bb_images)
         return image, bb_images        
 
-
+    # TODO: might decrease performance
     def random_quality(image, bb_images):
-        image = tf.image.random_jpeg_quality(image, 50, 100)
+        image = tf.image.random_jpeg_quality(image, 80, 100)
         return image, bb_images
 
 
@@ -153,7 +150,6 @@ def create(path, anchor_grid, iou):
 
         return tf.stack([image, image_annotated_gt]), iou_boxes
 
+    dataset = dataset.map(get_image_label_and_gt)
 
-    dataset = dataset.map(get_image_label_and_gt).cache()
-
-    return dataset
+    return dataset.repeat()

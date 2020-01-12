@@ -1,13 +1,12 @@
 import tensorflow as tf
 import numpy as np
+import config
 from dataSet import image_height, image_width
 
-def probabilities_output(features, anchor_grid):
+def probabilities_output(features):
     with tf.variable_scope('probabilities'):
-        ag_shape = np.shape(anchor_grid)
-
         features_convoluted = tf.layers.conv2d(inputs=features,
-                                              filters=ag_shape[2] * ag_shape[3] * 2,
+                                              filters=len(config.scales) * len(config.aspect_ratios) * 2,
                                               kernel_size=1,
                                               strides=1,
                                               padding='same',
@@ -17,16 +16,16 @@ def probabilities_output(features, anchor_grid):
                                               bias_initializer=tf.constant_initializer(0.0))
 
         probabilities = tf.reshape(features_convoluted, [tf.shape(features_convoluted)[0],
-                                     ag_shape[0],
-                                     ag_shape[1],
-                                     ag_shape[2],
-                                     ag_shape[3],
+                                     config.f_map_rows,
+                                     config.f_map_cols,
+                                     len(config.scales),
+                                     len(config.aspect_ratios),
                                      2])
 
         return probabilities
 
 
-def probabilities_loss(input_tensor, labels_tensor, negative_example_factor=10):
+def probabilities_loss(input_tensor, labels_tensor):
     cast_input = tf.cast(input_tensor, tf.float32)
     cast_labels = tf.cast(labels_tensor, tf.int32)
 
@@ -37,7 +36,7 @@ def probabilities_loss(input_tensor, labels_tensor, negative_example_factor=10):
     )
 
     flat = tf.reshape(random_weights, [-1])
-    values, indices = tf.nn.top_k(flat, k=tf.reduce_sum(cast_labels) * negative_example_factor)
+    values, indices = tf.nn.top_k(flat, k=tf.reduce_sum(cast_labels) * config.negative_example_factor)
     threshold = values[-1]
     negative_examples = tf.cast(random_weights > threshold, tf.dtypes.int32)
     weights = negative_examples + cast_labels
@@ -57,13 +56,13 @@ def probabilities_loss(input_tensor, labels_tensor, negative_example_factor=10):
     return total_loss, num_labels, num_weights, num_predicted
 
 
-def adjustments_output(features, ag, ag_tensor):
+
+def adjustments_output(features):
     with tf.variable_scope('adjustments'):
-        ag_shape = np.shape(ag)
         num_batch_size = tf.shape(features)[0]
 
         features_convoluted = tf.layers.conv2d(inputs=tf.cast(features, tf.float32),
-                                               filters=ag_shape[2] * ag_shape[3] * 4,
+                                               filters=len(config.scales) * len(config.aspect_ratios) * 4,
                                                kernel_size=1,
                                                strides=1,
                                                padding='same',
@@ -74,10 +73,10 @@ def adjustments_output(features, ag, ag_tensor):
                                                bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005))
         
         return tf.reshape(features_convoluted, [num_batch_size,
-                                                ag_shape[0],
-                                                ag_shape[1],
-                                                ag_shape[2],
-                                                ag_shape[3],
+                                                config.f_map_rows,
+                                                config.f_map_cols,
+                                                len(config.scales),
+                                                len(config.aspect_ratios),
                                                 4])
 
 

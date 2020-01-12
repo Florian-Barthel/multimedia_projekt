@@ -8,9 +8,9 @@ Filter all boxes with greater width than height
 '''
 
 
-src_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd_min'
-dest_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio'
-remove_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio_remove'
+src_folder = 'dataset_2_crowd_min'
+dest_folder = '../datasets/dataset_2_crowd_min_ratio'
+remove_folder = '../datasets/dataset_2_crowd_min_ratio_remove'
 
 if not os.path.exists(dest_folder):
     os.makedirs(dest_folder)

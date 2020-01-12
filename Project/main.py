@@ -36,7 +36,7 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
                                      aspect_ratios=config.aspect_ratios)
 
 # train_dataset = dataSet.create("./dataset_mmp/train", anchor_grid).batch(config.batch_size)
-train_dataset = dataSet.create("C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio", anchor_grid).batch(
+train_dataset = dataSet.create("./dataset_2_crowd_min ", anchor_grid).batch(
     config.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
 # test_dataset = dataSet.create("./dataset_mmp/test", anchor_grid).batch(1543)
 

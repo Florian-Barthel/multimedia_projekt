@@ -39,7 +39,6 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
 anchor_grid_tensor = tf.constant(anchor_grid, dtype=tf.int32)
 
 train_dataset = dataSet.create("./dataset_mmp/train", config.batch_size)
-test_dataset = dataSet.create("./dataset_mmp/test", config.batch_size)
 
 handle = tf.placeholder(tf.string, shape=[])
 iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
@@ -48,7 +47,7 @@ train_iterator = train_dataset.make_one_shot_iterator()
 
 next_element = iterator.get_next()
 
-with tf.Session(config=config.session_config) as sess:
+with tf.Session() as sess:
     train_handle = sess.run(train_iterator.string_handle())
 
     images_tensor, gt_labels_tensor = next_element
@@ -91,7 +90,7 @@ with tf.Session(config=config.session_config) as sess:
 
     graph_vars = tf.compat.v1.global_variables()
     progress_bar_init = tqdm(graph_vars)
-    progress_bar_init.set_description('INIT | ')
+    progress_bar_init.set_description('INIT  | ')
     for var in progress_bar_init:
         try:
             sess.run(var)
@@ -123,7 +122,7 @@ with tf.Session(config=config.session_config) as sess:
         log_writer.add_summary(summary, i)
 
     progress_bar_validate = tqdm(range(len(validation_data)))
-    progress_bar_validate.set_description('VAL | ')
+    progress_bar_validate.set_description('VAL   | ')
     for i in progress_bar_validate:
         (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[i]
         probabilites_output, ag_adjusted_output = sess.run([probabilities, ag_adjusted_tensor], feed_dict={images_tensor: test_images})
@@ -135,7 +134,7 @@ with tf.Session(config=config.session_config) as sess:
         os.makedirs('test_images')
     num_view_images = 30
     progress_bar_save = tqdm(range(num_view_images))
-    progress_bar_save.set_description('SAVE | ')
+    progress_bar_save.set_description('SAVE  | ')
     for i in progress_bar_save:
         image = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
         image.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))

@@ -26,6 +26,28 @@ def create(path, batch_size):
         return np.asarray(rects, dtype=np.float32)
 
 
+    def get_image_and_bb_images(file_name, label_array):
+        image = tf.io.read_file(file_name)
+        image = tf.image.decode_jpeg(image, channels=3)
+        h = tf.shape(image)[0]
+        w = tf.shape(image)[1]
+
+        h_pad = image_height - h
+        w_pad = image_width - w
+
+        h_off = tf.random.uniform([], minval=0, maxval=(h_pad + 1), dtype=tf.int32)
+        w_off = tf.random.uniform([], minval=0, maxval=(w_pad + 1), dtype=tf.int32)        
+    
+        image = tf.pad(image, [[h_off, h_pad - h_off], [w_off, w_pad - w_off], [0, 0]], mode='CONSTANT', constant_values=0)
+        image = tf.cast(image, tf.float32) / 127.5 - 1
+
+        bounding_box_images = tf.zeros([tf.shape(label_array)[0], h, w, 1], dtype=tf.float32)
+        bounding_box_images = tf.image.draw_bounding_boxes(bounding_box_images, label_array)
+        bounding_box_images = tf.pad(bounding_box_images, [[0, 0], [h_off, h_pad - h_off], [w_off, w_pad - w_off], [0, 0]], mode='CONSTANT', constant_values=0)
+
+        return image, bounding_box_images
+
+
     def get_bounding_box_images(label_array):
         bounding_box_images = tf.zeros([tf.shape(label_array)[0], image_height, image_width, 1], dtype=tf.float32)
         bounding_box_images = tf.image.draw_bounding_boxes(bounding_box_images, label_array)
@@ -133,8 +155,8 @@ def create(path, batch_size):
         annotation_file = tf.io.read_file(tf.strings.split(file_name, '.jpg', result_type='RaggedTensor')[0] + '.gt_data.txt')
         label_array = tf.py_func(create_label_array, [annotation_file], tf.float32)
 
-        image = parse_image(file_name)
-        bb_images = get_bounding_box_images(label_array)
+        image, bb_images = get_image_and_bb_images(file_name, label_array)
+        # bb_images = get_bounding_box_images()
 
         image, bb_images = random_image_augmentation(image, bb_images)
 

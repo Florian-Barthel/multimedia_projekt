@@ -1,6 +1,5 @@
 from tqdm import tqdm
 import numpy as np
-from PIL import Image
 import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -17,9 +16,6 @@ import eval_script.eval_detections_own as validation
 import mobilenet
 
 fileUtil.run_tensorboard()
-
-if not os.path.exists(fileUtil.detection_directory):
-    os.makedirs(fileUtil.detection_directory)
 
 anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
                                      f_map_cols=config.f_map_cols,
@@ -75,9 +71,9 @@ with tf.Session() as sess:
 
     tf.summary.scalar('debug/Number of positivies', num_predicted)
 
-
     merged_summary = tf.summary.merge_all()
     log_writer = tf.summary.FileWriter(fileUtil.logs_directory, sess.graph, flush_secs=1)
+
     saver = tf.train.Saver()
 
     graph_vars = tf.compat.v1.global_variables()
@@ -107,8 +103,8 @@ with tf.Session() as sess:
             print('validation...')
             for j in range(len(validation_data)):
                 (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[j]
-                probabilites_output, ag_adjusted_output = sess.run([probabilities, ag_adjusted_tensor], feed_dict={images_tensor: test_images})
-                evaluation.prepare_detections(probabilites_output, ag_adjusted_output, test_paths, fileUtil.detection_directory + detection_file)
+                probabilities_output, ag_adjusted_output = sess.run([probabilities, ag_adjusted_tensor], feed_dict={images_tensor: test_images})
+                evaluation.prepare_detections(probabilities_output, ag_adjusted_output, test_paths, fileUtil.detection_directory + detection_file)
             mAP = validation.run(fileUtil.detection_directory + detection_file, fileUtil.detection_directory + str(i),
                                  fileUtil.validation_directory) * 100
             print('mAP: ' + str(mAP))
@@ -120,30 +116,8 @@ with tf.Session() as sess:
     progress_bar_validate.set_description('VAL   | ')
     for i in progress_bar_validate:
         (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[i]
-        probabilites_output, ag_adjusted_output = sess.run([probabilities, ag_adjusted_tensor], feed_dict={images_tensor: test_images})
-        evaluation.prepare_detections(probabilites_output, ag_adjusted_output, test_paths, detection_directory + str(config.iterations) + '_detection.txt')
+        probabilities_output, ag_adjusted_output = sess.run([probabilities, ag_adjusted_tensor], feed_dict={images_tensor: test_images})
+        evaluation.prepare_detections(probabilities_output, ag_adjusted_output, test_paths, fileUtil.detection_directory + str(config.iterations) + '_detection.txt')
 
+    fileUtil.draw_images(test_images, test_labels, anchor_grid, ag_adjusted_output, probabilities_output)
 
-
-    if not os.path.exists('test_images'):
-        os.makedirs('test_images')
-    num_view_images = 30
-    progress_bar_save = tqdm(range(num_view_images))
-    progress_bar_save.set_description('SAVE  | ')
-    for i in progress_bar_save:
-        image = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
-        image.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))
-
-        dataUtil.draw_bounding_boxes(image, dataUtil.convert_to_annotation_rects_label(anchor_grid, test_labels[i]), (0, 255, 255))
-        image.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_labels.jpg'.format(i))
-
-        dataUtil.draw_bounding_boxes(image, dataUtil.convert_to_annotation_rects_output(anchor_grid, probabilites_output[i]), (0, 0, 255))
-        image.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
-
-        image_adjusted = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
-        
-        dataUtil.draw_bounding_boxes(image_adjusted, dataUtil.convert_to_annotation_rects_label(ag_adjusted_output[i], test_labels[i]), (0, 255, 255))
-        image_adjusted.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_labels_adjusted.jpg'.format(i))        
-
-        dataUtil.draw_bounding_boxes(image_adjusted, dataUtil.convert_to_annotation_rects_output(ag_adjusted_output[i], probabilites_output[i]), (0, 0, 255))
-        image_adjusted.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_estimates_adjusted.jpg'.format(i))

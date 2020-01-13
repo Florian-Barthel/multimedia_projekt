@@ -1,10 +1,12 @@
 import os
 import numpy as np
 from PIL import Image
+import config
 import dataUtil
 from datetime import datetime
 from tensorboard import program
 import tensorflow as tf
+from tqdm import tqdm
 
 image_path = 'test_images'
 max_drawn_images = 10
@@ -13,7 +15,12 @@ fg_threshold = 0.7
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
 current_time = datetime.now()
 logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
+detection_directory = 'eval_script/detections/' + current_time.strftime('%d-%m-%Y_%H-%M-%S') + '/'
+validation_directory = 'dataset_mmp'
 model_directory = './models/'
+
+if not os.path.exists(detection_directory):
+    os.makedirs(detection_directory)
 
 def save_model(saver, sess):
     saver.save(sess, model_directory + current_time.strftime('%d-%m-%Y_%H-%M-%S') + '/model')
@@ -23,43 +30,38 @@ def load_model(model_path, sess):
     saver.restore(sess, tf.train.latest_checkpoint(model_path))
     return saver
 
-def draw_images(test_images, test_labels, output, anchor_grid, gt_annotation_rects, nms_boxes, num_test_images):
-    if not os.path.exists(image_path):
-        os.makedirs(image_path)
-    # Limits number of drawn images to 10 by default
-    num_test_images = min(num_test_images, max_drawn_images)
-    # Draw normal boxes
-    for i in range(num_test_images):
-        img = Image.fromarray(((test_images[i] + 1) * 128).astype(np.uint8), 'RGB')
-        dataUtil.draw_bounding_boxes(image=img,
-                                     annotation_rects=dataUtil.convert_to_annotation_rects_label(anchor_grid,
-                                                                                                 test_labels[i]),
-                                     color=(255, 100, 100))
-        dataUtil.draw_bounding_boxes(image=img,
-                                     annotation_rects=dataUtil.convert_to_annotation_rects_output(anchor_grid,
-                                                                                                  output[i]),
-                                     color=(100, 255, 100))
-        data.draw_bounding_boxes(image=img,
-                                 annotation_rects=gt_annotation_rects[i],
-                                 color=(100, 100, 255))
-        img.save(image_path + '/max_overlap_boxes_{}.jpg'.format(i))
-    # Draw NMS boxes
-    for i in range(num_test_images):
-        for b in list(nms_boxes[i]):
-            if nms_boxes[i][b] < fg_threshold:
-                nms_boxes[i].pop(b)
-        img = Image.fromarray(((test_images[i] + 1) * 128).astype(np.uint8), 'RGB')
-        dataUtil.draw_bounding_boxes(image=img,
-                                     annotation_rects=dataUtil.convert_to_annotation_rects_label(anchor_grid,
-                                                                                                 test_labels[i]),
-                                     color=(255, 100, 100))
-        dataUtil.draw_bounding_boxes(image=img,
-                                     annotation_rects=list(nms_boxes[i].keys()),
-                                     color=(100, 255, 100))
-        dataUtil.draw_bounding_boxes(image=img,
-                                     annotation_rects=gt_annotation_rects[i],
-                                     color=(100, 100, 255))
-        img.save(image_path + '/nms_overlap_boxes_{}.jpg'.format(i))
+def draw_images(test_images, test_labels, anchor_grid, ag_adjusted_output, probabilities_output):
+    if not os.path.exists('test_images'):
+        os.makedirs('test_images')
+    num_view_images = 30
+    progress_bar_save = tqdm(range(num_view_images))
+    progress_bar_save.set_description('SAVE  | ')
+    for i in progress_bar_save:
+        image = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
+        image.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))
+
+        dataUtil.draw_bounding_boxes(image, dataUtil.convert_to_annotation_rects_label(anchor_grid, test_labels[i]),
+                                     (0, 255, 255))
+        image.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_labels.jpg'.format(i))
+
+        dataUtil.draw_bounding_boxes(image,
+                                     dataUtil.convert_to_annotation_rects_output(anchor_grid, probabilities_output[i]),
+                                     (0, 0, 255))
+        image.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
+
+        image_adjusted = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
+
+        dataUtil.draw_bounding_boxes(image_adjusted,
+                                     dataUtil.convert_to_annotation_rects_label(ag_adjusted_output[i], test_labels[i]),
+                                     (0, 255, 255))
+        image_adjusted.resize(config.output_image_size, Image.ANTIALIAS).save(
+            'test_images/{}_labels_adjusted.jpg'.format(i))
+
+        dataUtil.draw_bounding_boxes(image_adjusted, dataUtil.convert_to_annotation_rects_output(ag_adjusted_output[i],
+                                                                                                 probabilities_output[
+                                                                                                     i]), (0, 0, 255))
+        image_adjusted.resize(config.output_image_size, Image.ANTIALIAS).save(
+            'test_images/{}_estimates_adjusted.jpg'.format(i))
 
 
 def run_tensorboard():

@@ -3,17 +3,14 @@ from annotationRect import AnnotationRect
 import geometry
 import tensorflow as tf
 import config
-
-image_height = 320
-image_width = 320
+from config import image_height, image_width
 
 crop_factor = 0.1
 # percentage of applied augmentations
 augmentation_factor = 0.15
 
-# returns images of shape [batch_size, 2, 320, 320, 3] and labels of shape [batch_size, f_map_rows, f_map_cols, len(scales), len(aspect_ratios)]
-# [batch_size, 0] are raw images, [batch_size, 1] are ground truth annotated images
-def create(path, anchor_grid):
+# returns images of shape [batch_size, 320, 320, 3] and labels of shape [batch_size, None, 4)]
+def create(path, batch_size):
     
     dataset = tf.data.Dataset.list_files(path + '/*.jpg')
 
@@ -27,6 +24,28 @@ def create(path, anchor_grid):
                 rects.append(annotation_rect)
 
         return np.asarray(rects, dtype=np.float32)
+
+
+    def get_image_and_bb_images(file_name, label_array):
+        image = tf.io.read_file(file_name)
+        image = tf.image.decode_jpeg(image, channels=3)
+        h = tf.shape(image)[0]
+        w = tf.shape(image)[1]
+
+        h_pad = image_height - h
+        w_pad = image_width - w
+
+        h_off = tf.random.uniform([], minval=0, maxval=(h_pad + 1), dtype=tf.int32)
+        w_off = tf.random.uniform([], minval=0, maxval=(w_pad + 1), dtype=tf.int32)        
+    
+        image = tf.pad(image, [[h_off, h_pad - h_off], [w_off, w_pad - w_off], [0, 0]], mode='CONSTANT', constant_values=0)
+        image = tf.cast(image, tf.float32) / 127.5 - 1
+
+        bounding_box_images = tf.zeros([tf.shape(label_array)[0], h, w, 1], dtype=tf.float32)
+        bounding_box_images = tf.image.draw_bounding_boxes(bounding_box_images, label_array)
+        bounding_box_images = tf.pad(bounding_box_images, [[0, 0], [h_off, h_pad - h_off], [w_off, w_pad - w_off], [0, 0]], mode='CONSTANT', constant_values=0)
+
+        return image, bounding_box_images
 
 
     def get_bounding_box_images(label_array):
@@ -54,18 +73,13 @@ def create(path, anchor_grid):
         return AnnotationRect(h_min, w_min, h_max, w_max)
 
 
-    def bounding_box_images_to_label(bounding_box_images):
-        gt_ar_boxes = []
+    def bounding_box_images_to_gt_tensor(bounding_box_images):
         gt_boxes = []
         for bounding_box_image in bounding_box_images:
             gt_box = bmp_to_annotation_rect(bounding_box_image)
-            gt_ar_boxes.append(gt_box)
             gt_boxes.append([float(gt_box.y1) / image_height, float(gt_box.x1) / image_width, float(gt_box.y2) / image_height, float(gt_box.x2) / image_width])
 
-        max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_ar_boxes)
-        iou_boxes = (max_overlaps > config.iou).astype(np.int32)
-
-        return iou_boxes, np.array(gt_boxes, dtype=np.float32)
+        return np.array(gt_boxes, dtype=np.float32)
 
     def random_rotate(image, bb_images):
         random_angle = tf.random.uniform([1], minval=-(np.pi / 4.0), maxval=(np.pi / 4.0))
@@ -121,7 +135,6 @@ def create(path, anchor_grid):
 
     def random_image_augmentation(image, bb_images):
         augmentations = [random_rotate,
-                         random_flip,
                          random_quality,
                          random_color,
                          random_crop]
@@ -132,6 +145,9 @@ def create(path, anchor_grid):
         for augmentation in augmentations:
             image, bb_images = tf.cond(tf.random_uniform([], 0.0, 1.0) < augmentation_factor, lambda: augmentation(image, bb_images), lambda: no_augment(image, bb_images))
 
+        # Avoid Bounding Box regression to tend into one direction
+        image, bb_images = tf.cond(tf.random_uniform([], 0.0, 1.0) < 0.5, lambda: random_flip(image, bb_images), lambda: no_augment(image, bb_images))
+
         return image, bb_images
 
 
@@ -139,17 +155,13 @@ def create(path, anchor_grid):
         annotation_file = tf.io.read_file(tf.strings.split(file_name, '.jpg', result_type='RaggedTensor')[0] + '.gt_data.txt')
         label_array = tf.py_func(create_label_array, [annotation_file], tf.float32)
 
-        image = parse_image(file_name)
-        bb_images = get_bounding_box_images(label_array)
+        image, bb_images = get_image_and_bb_images(file_name, label_array)
+        # bb_images = get_bounding_box_images()
 
         image, bb_images = random_image_augmentation(image, bb_images)
 
-        iou_boxes, gt_boxes = tf.py_func(bounding_box_images_to_label, [bb_images], [tf.int32, tf.float32])
+        gt_boxes = tf.py_func(bounding_box_images_to_gt_tensor, [bb_images], tf.float32)
 
-        image_annotated_gt = tf.squeeze(tf.image.draw_bounding_boxes(tf.expand_dims(image, 0), tf.expand_dims(gt_boxes, 0)))
+        return image, gt_boxes
 
-        return tf.stack([image, image_annotated_gt]), iou_boxes
-
-    dataset = dataset.map(get_image_label_and_gt)
-
-    return dataset.repeat()
+    return dataset.map(get_image_label_and_gt).padded_batch(batch_size, padded_shapes=([image_height, image_width, 3], [None, 4]), padding_values=(0.0, float('NaN'))).repeat().prefetch(tf.data.experimental.AUTOTUNE)

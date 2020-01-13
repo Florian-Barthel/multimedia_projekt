@@ -69,8 +69,8 @@ def save_boxes(boxes, image_path, detection_file):
 
 # Prepares detections from the output and anchor_grid applying non-maximum-suppression
 # and saving the resulting detections to disk
-def prepare_detections(output, anchor_grid, image_paths, detection_file, nms_threshold=0.3):
+def prepare_detections(output, anchor_grids, image_paths, detection_file, nms_threshold=0.3):
     for i in range(len(image_paths)):
-        boxes_dict = create_boxes_dict(output[i], anchor_grid)
+        boxes_dict = create_boxes_dict(output[i], anchor_grids[i])
         nms = non_maximum_suppression(boxes_dict, nms_threshold)
         save_boxes(nms, image_paths[i], detection_file)

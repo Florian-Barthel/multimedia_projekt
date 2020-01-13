@@ -5,13 +5,14 @@ from annotationRect import AnnotationRect
 import geometry
 import eval_script.flickr_io as fio
 import eval_detections as eval
+from datetime import datetime
 
 # Preparing data for the evaluation script
 # The script can be run from the Project directory by invoking:
 # python eval_script\eval_detections.py --detection eval_script/detections.txt --dset_basedir dataset_mmp
 
-detections_path = 'eval_script/detections.txt'
-default_fg = 0.01
+current_time = datetime.now()
+
 
 # Non-maximum-suppression with default threshold of 0.3 (IoU)
 # Input: dict of boxes AnnotationRect:Score, (optional) IoU threshold
@@ -26,13 +27,13 @@ def non_maximum_suppression(boxes, threshold=0.3):
         boxes.pop(max_box)
         # Remove all boxes with IoU > threshold
         for b in list(boxes):
-            if geometry.iou(max_box, b) > threshold:
+            if geometry.iou(max_box, b) >= threshold:
                 boxes.pop(b)
     return output
 
 
 # Creating dict of boxes AnnotationRect:Score from the output and the anchor grid
-def create_boxes_dict(data, anchor_grid, fg_threshold=default_fg):
+def create_boxes_dict(data, anchor_grid, fg_threshold=0.05):
     boxes_dict = {}
     scores = []
     calc_softmax = softmax(data, axis=-1)
@@ -47,9 +48,8 @@ def create_boxes_dict(data, anchor_grid, fg_threshold=default_fg):
                         if foreground[i, j, k, l, m] > fg_threshold:
                             scores.append(foreground[i, j, k, l, m])
     # Get the boxes from the data
-    filtered_indices = np.where(foreground > fg_threshold)
-    remove_last = filtered_indices[:4]
-    max_boxes = anchor_grid[remove_last]
+    indices = np.where(foreground > fg_threshold)[:4]
+    max_boxes = anchor_grid[indices]
     boxes = [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
     for i in range(len(boxes)):
         boxes_dict[boxes[i]] = scores[i]
@@ -58,8 +58,8 @@ def create_boxes_dict(data, anchor_grid, fg_threshold=default_fg):
 
 # Save detections in text file; each line in format:
 # <Image name> <class_id> <x1> <y1> <x2> <y2> <score>
-def save_boxes(boxes, image_path):
-    file = open(detections_path, "a+")
+def save_boxes(boxes, image_path, detection_file):
+    file = open(detection_file, "a+")
     for b in boxes:
         file.write("{name} 0 {x1} {y1} {x2} {y2} {score}\n".format(name=image_path.split("/")[-1],
                                                                    x1=int(b.x1),
@@ -70,20 +70,14 @@ def save_boxes(boxes, image_path):
     file.close()
 
 
-# Clears the detections file located at detections_path
-def clear_detections():
-    open(detections_path, "w+").close()
-
-
 # Prepares detections from the output and anchor_grid applying non-maximum-suppression
 # and saving the resulting detections to disk
-def prepare_detections(output, anchor_grid, image_paths, num_test_images, nms_threshold=0.3, fg_threshold=default_fg):
-    clear_detections()
+def prepare_detections(output, anchor_grids, image_paths, detection_file, nms_threshold=0.3):
     nms_boxes = []
-    for i in range(num_test_images):
-        boxes_dict = create_boxes_dict(output[i], anchor_grid, fg_threshold)
+    for i in range(len(image_paths)):
+        boxes_dict = create_boxes_dict(output[i], anchor_grids[i])
         nms_boxes.append(non_maximum_suppression(boxes_dict, nms_threshold))
-        save_boxes(nms_boxes[i], image_paths[i])
+        save_boxes(nms_boxes[i], image_paths[i], detection_file)
     return nms_boxes
 
 # Using code from the supplied eval_detections.py to evaluate the model in runtime

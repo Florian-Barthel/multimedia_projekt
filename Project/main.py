@@ -7,128 +7,143 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
 import dataSet
+import config
 import dataUtil
 import graph
 import anchorgrid
 import evaluation
 import fileUtil
-
-f_map_rows = 10
-f_map_cols = 10
-scale_factor = 32.0
-scales = [50, 80, 100, 150]
-aspect_ratios = [1.0, 1.5, 2.0]
-batch_size = 30
-iou = 0.5
-learning_rate = 0.001
-iterations = 10
-
-negative_percentage = 15
+import eval_script.eval_detections_own as validation
+import mobilenet
 
 fileUtil.run_tensorboard()
 
-gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
-config = tf.ConfigProto(gpu_options=gpu_options)
+if not os.path.exists(fileUtil.detection_directory):
+    os.makedirs(fileUtil.detection_directory)
 
-anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
-                                     f_map_cols=f_map_cols,
-                                     scale_factor=scale_factor,
-                                     scales=scales,
-                                     aspect_ratios=aspect_ratios)
+anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
+                                     f_map_cols=config.f_map_cols,
+                                     scale_factor=config.scale_factor,
+                                     scales=config.scales,
+                                     aspect_ratios=config.aspect_ratios)
 
-train_dataset = dataSet.create("./dataset_mmp/train", anchor_grid, iou).batch(batch_size)
-test_dataset = dataSet.create("./dataset_mmp/test", anchor_grid, iou).batch(batch_size)
+anchor_grid_tensor = tf.constant(anchor_grid, dtype=tf.int32)
+
+train_dataset = dataSet.create("./dataset_mmp/train", config.batch_size)
 
 handle = tf.placeholder(tf.string, shape=[])
 iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
 
 train_iterator = train_dataset.make_one_shot_iterator()
-test_iterator = test_dataset.make_one_shot_iterator()
 
 next_element = iterator.get_next()
 
-with tf.Session(config=config) as sess:
+with tf.Session() as sess:
     train_handle = sess.run(train_iterator.string_handle())
-    test_handle = sess.run(test_iterator.string_handle())
 
-    images_tensor, labels_tensor = next_element
+    images_tensor, gt_labels_tensor = next_element
 
-    # use only raw images!
-    no_gts_images_tensor = images_tensor[:, 0]
+    labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid)
 
-    calculate_output = graph.output(images=no_gts_images_tensor,
-                                    num_scales=len(scales),
-                                    num_aspect_ratios=len(aspect_ratios),
-                                    f_rows=f_map_rows,
-                                    f_cols=f_map_cols)
+    features = mobilenet.mobile_net_v2()(images_tensor)
 
-    calculate_loss, num_labels, num_random, num_weights, num_predicted = graph.loss(input_tensor=calculate_output,
-                                                                                    labels=labels_tensor,
-                                                                                    negative_percentage=negative_percentage)
+    probabilities = graph.probabilities_output(features)
+    probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(probabilities, labels_tensor)
+    
+    adjustments = graph.adjustments_output(features)
+    adjustments_loss = graph.adjustments_loss(adjustments, gt_labels_tensor, labels_tensor, anchor_grid_tensor)
+    ag_adjusted_tensor = dataUtil.calculate_adjusted_anchor_grid(anchor_grid_tensor, adjustments)
 
+    total_loss = probabilities_loss * adjustments_loss
+    
 
-    def optimize(my_loss):
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
-        objective = optimizer.minimize(loss=my_loss)
+    def optimize(target_loss):
+        optimizer = tf.train.GradientDescentOptimizer(config.learning_rate)
+        objective = optimizer.minimize(target_loss)
         return objective
 
+    optimize = optimize(total_loss)
+    
 
-    optimize = optimize(calculate_loss)
+    #Tensorboard config
+    tf.summary.scalar('losses/total', total_loss)
+    tf.summary.scalar('losses/probabilities', probabilities_loss)
+    tf.summary.scalar('losses/adjustments', adjustments_loss)
 
-    saver = tf.train.Saver()
-    tf.summary.scalar('loss', calculate_loss)
-    tf.summary.scalar('num_predicted', num_predicted)
+    mAP = 0
+    tf.summary.scalar('score/mAP', mAP)
+
+    tf.summary.scalar('debug/Number of positivies', num_predicted)
+
+
     merged_summary = tf.summary.merge_all()
+    log_writer = tf.summary.FileWriter(fileUtil.logs_directory, sess.graph, flush_secs=1)
+    saver = tf.train.Saver()
 
-    log_writer = tf.summary.FileWriter(fileUtil.logs_directory, sess.graph, flush_secs=5)
-
-    graph_vars = tf.global_variables()
-    for var in tqdm(graph_vars):
+    graph_vars = tf.compat.v1.global_variables()
+    progress_bar_init = tqdm(graph_vars)
+    progress_bar_init.set_description('INIT  | ')
+    for var in progress_bar_init:
         try:
             sess.run(var)
         except:
-            print('found uninitialized variable {}'.format(var.name))
-            sess.run(tf.initialize_variables([var]))
+            sess.run(tf.compat.v1.variables_initializer([var]))
 
-    progress_bar = tqdm(range(iterations))
-    for i in progress_bar:
-        loss, labels, random, weights, predicted, _, summary = sess.run(
-            [calculate_loss, num_labels, num_random, num_weights, num_predicted, optimize, merged_summary],
+    validation_data = dataUtil.get_validation_data(200, anchor_grid)
+
+    progress_bar_train = tqdm(range(config.iterations))
+    for i in progress_bar_train:
+        progress_bar_train.set_description('TRAIN | ')
+        loss, labels, weights, predicted, _, summary = sess.run(
+            [[total_loss, probabilities_loss, adjustments_loss], num_labels, num_weights, num_predicted, optimize, merged_summary],
             feed_dict={handle: train_handle})
 
-        description = ' loss:' + str(np.around(loss, decimals=5)) + ' num_labels: ' + str(
-            labels) + ' num_random: ' + str(random) + ' num_weights: ' + str(weights) + ' num_predicted: ' + str(
-            predicted)
-        progress_bar.set_description(description, refresh=True)
-        # TensorBoard scalar summary
+        '''
+        Run validation every 500 iterations
+        '''
+        # TODO: Save model
+        if (i + 1) % 501 == 0:
+            detection_file = str(i) + '_detection.txt'
+            print('validation...')
+            for j in range(len(validation_data)):
+                (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[j]
+                probabilites_output, ag_adjusted_output = sess.run([probabilities, ag_adjusted_tensor], feed_dict={images_tensor: test_images})
+                evaluation.prepare_detections(probabilites_output, ag_adjusted_output, test_paths, fileUtil.detection_directory + detection_file)
+            mAP = validation.run(fileUtil.detection_directory + detection_file, fileUtil.detection_directory + str(i),
+                                 fileUtil.validation_directory) * 100
+            print('mAP: ' + str(mAP))
+            print('Saving model...')
+            fileUtil.save_model(saver, sess)
         log_writer.add_summary(summary, i)
 
-    fileUtil.save_model(saver, sess)
-    images_result, labels_result, output_result = sess.run([images_tensor, labels_tensor, calculate_output],
-                                                           feed_dict={handle: test_handle})
-    # annotated_images
-    images_result = images_result[:, 1]
+    progress_bar_validate = tqdm(range(len(validation_data)))
+    progress_bar_validate.set_description('VAL   | ')
+    for i in progress_bar_validate:
+        (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[i]
+        probabilites_output, ag_adjusted_output = sess.run([probabilities, ag_adjusted_tensor], feed_dict={images_tensor: test_images})
+        evaluation.prepare_detections(probabilites_output, ag_adjusted_output, test_paths, detection_directory + str(config.iterations) + '_detection.txt')
 
-    test_paths = []
-    for i in range(np.shape(images_result)[0]):
-        image = Image.fromarray(((images_result[i] + 1) * 127.5).astype(np.uint8), 'RGB')
-        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))
 
-        dataUtil.draw_bounding_boxes(image=image,
-                                     annotation_rects=dataUtil.convert_to_annotation_rects_label(anchor_grid,
-                                                                                                 labels_result[i]),
-                                     color=(0, 255, 255))
 
-        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_labels.jpg'.format(i))
+    if not os.path.exists('test_images'):
+        os.makedirs('test_images')
+    num_view_images = 30
+    progress_bar_save = tqdm(range(num_view_images))
+    progress_bar_save.set_description('SAVE  | ')
+    for i in progress_bar_save:
+        image = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
+        image.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_gts.jpg'.format(i))
 
-        dataUtil.draw_bounding_boxes(image=image,
-                                     annotation_rects=dataUtil.convert_to_annotation_rects_output(anchor_grid,
-                                                                                                  output_result[i]),
-                                     color=(0, 0, 255))
+        dataUtil.draw_bounding_boxes(image, dataUtil.convert_to_annotation_rects_label(anchor_grid, test_labels[i]), (0, 255, 255))
+        image.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_labels.jpg'.format(i))
 
-        image.resize((720, 720), Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
-        test_paths.append('test_images/{}_estimates.jpg'.format(i))
+        dataUtil.draw_bounding_boxes(image, dataUtil.convert_to_annotation_rects_output(anchor_grid, probabilites_output[i]), (0, 0, 255))
+        image.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_estimates.jpg'.format(i))
 
-    # Saving detections for evaluation purposes
-    evaluation.prepare_detections(output_result, anchor_grid, test_paths, batch_size)
-    evaluation.evaluate('eval_script/detections.txt', 'dataset_mmp')
+        image_adjusted = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
+        
+        dataUtil.draw_bounding_boxes(image_adjusted, dataUtil.convert_to_annotation_rects_label(ag_adjusted_output[i], test_labels[i]), (0, 255, 255))
+        image_adjusted.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_labels_adjusted.jpg'.format(i))        
+
+        dataUtil.draw_bounding_boxes(image_adjusted, dataUtil.convert_to_annotation_rects_output(ag_adjusted_output[i], probabilites_output[i]), (0, 0, 255))
+        image_adjusted.resize(config.output_image_size, Image.ANTIALIAS).save('test_images/{}_estimates_adjusted.jpg'.format(i))

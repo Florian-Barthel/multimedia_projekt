@@ -42,11 +42,20 @@ def calculate_loss(input_tensor, labels_tensor):
     cast_input = tf.cast(input_tensor, tf.float32)
     cast_labels = tf.cast(labels_tensor, tf.int32)
 
+    '''
     # make random weights
     random_weights = tf.random.uniform(
         tf.shape(labels_tensor),
         dtype=tf.dtypes.float32
     )
+    '''
+
+    random_weights = tf.losses.sparse_softmax_cross_entropy(
+        labels=cast_labels,
+        logits=cast_input,
+        reduction=tf.losses.Reduction.NONE
+    )
+
     flat = tf.reshape(random_weights, [-1])
     values, indices = tf.nn.top_k(flat, k=tf.reduce_sum(cast_labels) * config.negative_example_factor)
     threshold = values[-1]

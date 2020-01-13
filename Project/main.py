@@ -35,7 +35,7 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
                                      scales=config.scales,
                                      aspect_ratios=config.aspect_ratios)
 
-train_dataset = dataSet.create("./dataset_2_crowd_min ", anchor_grid).batch(
+train_dataset = dataSet.create("C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio", anchor_grid).batch(
     config.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
 
 handle = tf.placeholder(tf.string, shape=[])
@@ -61,8 +61,9 @@ with tf.Session() as sess:
 
 
     def optimize(my_loss):
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=config.learning_rate)
-        objective = optimizer.minimize(loss=my_loss)
+        # optimizer = tf.train.GradientDescentOptimizer(learning_rate=config.learning_rate)
+        optimizer = tf.train.AdamOptimizer(learning_rate=config.learning_rate)
+        objective = optimizer.minimize(loss=my_loss, global_step=config.global_step)
         return objective
 
 

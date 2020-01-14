@@ -2,8 +2,8 @@ import tensorflow as tf
 f_map_rows = 10
 f_map_cols = 10
 scale_factor = 32.0
-scales = [70, 80, 100, 120, 150]
-aspect_ratios = [0.5, 0.75, 1.0, 1.5, 2.0]
+scales = [80, 120, 150]
+aspect_ratios = [1.0, 1.5, 2.0]
 batch_size = 32
 iou = 0.5
 global_step = tf.Variable(0, trainable=False)

@@ -88,7 +88,7 @@ with tf.Session() as sess:
         except:
             sess.run(tf.compat.v1.variables_initializer([var]))
 
-    validation_data = dataUtil.get_validation_data(200, anchor_grid)
+    validation_data = dataUtil.get_validation_data(100, anchor_grid)
 
     progress_bar_train = tqdm(range(config.iterations))
     for i in progress_bar_train:

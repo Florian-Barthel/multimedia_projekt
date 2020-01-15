@@ -137,12 +137,16 @@ def create(path, anchor_grid):
 
     def get_image_label_and_gt(file_name):
         annotation_file = tf.io.read_file(tf.strings.split(file_name, '.jpg', result_type='RaggedTensor')[0] + '.gt_data.txt')
+        #lines = tf.string_split(annotation_file, sep="\n")
+        #boxes = tf.string_split(lines, sep=" ")
+        #boxes = tf.cast(boxes, tf.float32)
         label_array = tf.py_func(create_label_array, [annotation_file], tf.float32)
 
         image = parse_image(file_name)
         bb_images = get_bounding_box_images(label_array)
 
-        image, bb_images = random_image_augmentation(image, bb_images)
+        if config.use_augmentation:
+            image, bb_images = random_image_augmentation(image, bb_images)
 
         iou_boxes, gt_boxes = tf.py_func(bounding_box_images_to_label, [bb_images], [tf.int32, tf.float32])
 
@@ -150,6 +154,6 @@ def create(path, anchor_grid):
 
         return tf.stack([image, image_annotated_gt]), iou_boxes
 
-    dataset = dataset.map(get_image_label_and_gt)
+    dataset = dataset.map(get_image_label_and_gt, 64)
 
     return dataset.repeat()

@@ -35,18 +35,19 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
                                      scales=config.scales,
                                      aspect_ratios=config.aspect_ratios)
 
-train_dataset = dataSet.create("C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio", anchor_grid).batch(
+train_dataset = dataSet.create("/home/student/datasets/dataset_2_crowd_min_ratio", anchor_grid).batch(
     config.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
 
 handle = tf.placeholder(tf.string, shape=[])
 iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
 
 train_iterator = train_dataset.make_one_shot_iterator()
+next_element = train_iterator.get_next()
 
-next_element = iterator.get_next()
+# next_element = iterator.get_next()
 
 with tf.Session() as sess:
-    train_handle = sess.run(train_iterator.string_handle())
+    # train_handle = sess.run(train_iterator.string_handle())
 
     images_tensor, labels_tensor = next_element
 
@@ -74,7 +75,8 @@ with tf.Session() as sess:
     '''
     tf.summary.scalar('loss', calculate_loss)
     tf.summary.scalar('num_predicted', num_predicted)
-    mAP = 0
+    py_mAP = 0
+    mAP = tf.placeholder(shape=(), dtype=tf.float32)
     tf.summary.scalar('mAP', mAP)
     merged_summary = tf.summary.merge_all()
     log_writer = tf.summary.FileWriter(logs_directory, sess.graph)
@@ -82,20 +84,25 @@ with tf.Session() as sess:
     graph_vars = tf.compat.v1.global_variables()
     progress_bar_init = tqdm(graph_vars)
     progress_bar_init.set_description('INIT  | ')
+
+    vars_to_init = []
     for var in progress_bar_init:
         try:
             sess.run(var)
         except:
-            sess.run(tf.compat.v1.variables_initializer([var]))
+            vars_to_init.append(var)
+    sess.run(tf.compat.v1.variables_initializer(vars_to_init))
 
-    validation_data = dataUtil.get_validation_data(100, anchor_grid)
+    validation_data = dataUtil.get_validation_data(200, anchor_grid)
 
     progress_bar_train = tqdm(range(config.iterations))
     for i in progress_bar_train:
         progress_bar_train.set_description('TRAIN | ')
         loss, labels, weights, predicted, _, summary = sess.run(
             [calculate_loss, num_labels, num_weights, num_predicted, optimize, merged_summary],
-            feed_dict={handle: train_handle})
+            feed_dict={mAP: py_mAP})
+        #   feed_dict={handle: train_handle})
+        log_writer.add_summary(summary, i)
 
         '''
         Run validation every 500 iterations
@@ -108,9 +115,10 @@ with tf.Session() as sess:
                 (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[j]
                 output = sess.run(calculate_output, feed_dict={no_gts_images_tensor: test_images})
                 evaluation.prepare_detections(output, anchor_grid, test_paths, detection_directory + detection_file)
-            mAP = validation.run(detection_directory + detection_file, detection_directory + str(i), validation_directory) * 100
+            py_mAP = validation.run(detection_directory + detection_file, detection_directory + str(i), validation_directory) * 100
+            str_summary = sess.run(merged_summary, feed_dict={mAP: py_mAP})
             print('mAP: ' + str(mAP))
-        log_writer.add_summary(summary, i)
+            log_writer.add_summary(str_summary, i)
 
     progress_bar_validate = tqdm(range(len(validation_data)))
     progress_bar_validate.set_description('VAL   | ')
@@ -119,8 +127,9 @@ with tf.Session() as sess:
         output = sess.run(calculate_output, feed_dict={no_gts_images_tensor: test_images})
         evaluation.prepare_detections(output, anchor_grid, test_paths, detection_directory + str(config.iterations) + '_detection.txt')
 
-    num_view_images = 30
-    progress_bar_save = tqdm(range(num_view_images))
+
+def draw_validation_images(num_images):
+    progress_bar_save = tqdm(range(num_images))
     progress_bar_save.set_description('SAVE  | ')
     for i in progress_bar_save:
         img = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')

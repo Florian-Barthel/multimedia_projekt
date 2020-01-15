@@ -136,10 +136,9 @@ def convert_to_annotation_rects_label(anchor_grid, labels):
     return annotated_boxes
 
 
-def calculate_adjusted_anchor_grid(ag, adjustments):
-    
+def calculate_adjusted_anchor_grid(anchor_grid, adjustments):
     num_batch_size = tf.shape(adjustments)[0]
-    ag_batched = tf.cast(tf.tile(tf.expand_dims(ag, 0), [num_batch_size, 1, 1, 1, 1, 1]), tf.float32)
+    ag_batched = tf.cast(tf.tile(tf.expand_dims(anchor_grid, 0), [num_batch_size, 1, 1, 1, 1, 1]), tf.float32)
 
     # Inverted regression targets
     ag_sizes = ag_batched[..., 2:4] - ag_batched[..., 0:2]

@@ -1,26 +1,26 @@
 import tensorflow as tf
-import numpy as np
 import config
 from dataSet import image_height, image_width
+
 
 def probabilities_output(features):
     with tf.variable_scope('probabilities'):
         features_convoluted = tf.layers.conv2d(inputs=features,
-                                              filters=len(config.scales) * len(config.aspect_ratios) * 2,
-                                              kernel_size=1,
-                                              strides=1,
-                                              padding='same',
-                                              activation=None,
-                                              kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005),
-                                              kernel_initializer=tf.truncated_normal_initializer(),
-                                              bias_initializer=tf.constant_initializer(0.0))
+                                               filters=len(config.scales) * len(config.aspect_ratios) * 2,
+                                               kernel_size=1,
+                                               strides=1,
+                                               padding='same',
+                                               activation=None,
+                                               kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005),
+                                               kernel_initializer=tf.truncated_normal_initializer(),
+                                               bias_initializer=tf.constant_initializer(0.0))
 
         probabilities = tf.reshape(features_convoluted, [tf.shape(features_convoluted)[0],
-                                     config.f_map_rows,
-                                     config.f_map_cols,
-                                     len(config.scales),
-                                     len(config.aspect_ratios),
-                                     2])
+                                                         config.f_map_rows,
+                                                         config.f_map_cols,
+                                                         len(config.scales),
+                                                         len(config.aspect_ratios),
+                                                         2])
 
         return probabilities
 
@@ -29,16 +29,23 @@ def probabilities_loss(input_tensor, labels_tensor):
     cast_input = tf.cast(input_tensor, tf.float32)
     cast_labels = tf.cast(labels_tensor, tf.int32)
 
-    # make random weights
-    random_weights = tf.random.uniform(
-        tf.shape(labels_tensor),
-        dtype=tf.dtypes.float32
-    )
+    if config.use_hard_negative_mining:
+        weights = tf.losses.sparse_softmax_cross_entropy(
+            labels=cast_labels,
+            logits=cast_input,
+            reduction=tf.losses.Reduction.NONE
+        )
+    else:
+        # make random weights
+        weights = tf.random.uniform(
+            tf.shape(labels_tensor),
+            dtype=tf.dtypes.float32
+        )
 
-    flat = tf.reshape(random_weights, [-1])
+    flat = tf.reshape(weights, [-1])
     values, indices = tf.nn.top_k(flat, k=tf.reduce_sum(cast_labels) * config.negative_example_factor)
     threshold = values[-1]
-    negative_examples = tf.cast(random_weights > threshold, tf.dtypes.int32)
+    negative_examples = tf.cast(weights > threshold, tf.dtypes.int32)
     weights = negative_examples + cast_labels
 
     objective_loss = tf.losses.sparse_softmax_cross_entropy(
@@ -50,11 +57,9 @@ def probabilities_loss(input_tensor, labels_tensor):
     total_loss = tf.add(objective_loss, regularization_loss)
 
     num_labels = tf.reduce_sum(cast_labels[0])
-    num_random = tf.reduce_sum(negative_examples[0])
     num_weights = tf.reduce_sum(weights[0])
     num_predicted = tf.reduce_sum(tf.argmax(cast_input[0], axis=-1))
     return total_loss, num_labels, num_weights, num_predicted
-
 
 
 def adjustments_output(features):
@@ -71,7 +76,7 @@ def adjustments_output(features):
                                                kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005),
                                                bias_initializer=tf.constant_initializer(0.0),
                                                bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005))
-        
+
         return tf.reshape(features_convoluted, [num_batch_size,
                                                 config.f_map_rows,
                                                 config.f_map_cols,
@@ -95,7 +100,7 @@ def adjustments_loss(adjustments, gts, labels, ag):
     ag_batched = tf.reshape(ag_batched, [num_batch_size, num_anchors, 4])
     ag_batched = tf.tile(tf.expand_dims(ag_batched, -2), [1, 1, num_max_gts, 1])
     anchor_grid_sizes = ag_batched[..., 2:4] - ag_batched[..., 0:2]
-    
+
     adjustments = tf.reshape(adjustments, [num_batch_size, num_anchors, 4])
     adjustments = tf.boolean_mask(adjustments, mask)
 
@@ -103,7 +108,8 @@ def adjustments_loss(adjustments, gts, labels, ag):
     scale_targets = tf.math.log((gt_sizes / anchor_grid_sizes))
 
     targets = tf.concat([offset_targets, scale_targets], -1)
-    targets = tf.where(tf.math.is_nan(targets), tf.fill(tf.shape(targets), tf.constant(float("Inf"), tf.float32)), targets)
+    targets = tf.where(tf.math.is_nan(targets), tf.fill(tf.shape(targets), tf.constant(float("Inf"), tf.float32)),
+                       targets)
     targets = tf.reduce_min(targets, -2)
     targets = tf.boolean_mask(targets, mask)
 

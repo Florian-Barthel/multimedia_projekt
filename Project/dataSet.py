@@ -158,7 +158,8 @@ def create(path, batch_size):
         image, bb_images = get_image_and_bb_images(file_name, label_array)
         # bb_images = get_bounding_box_images()
 
-        image, bb_images = random_image_augmentation(image, bb_images)
+        if config.use_augmentation:
+            image, bb_images = random_image_augmentation(image, bb_images)
 
         gt_boxes = tf.py_func(bounding_box_images_to_gt_tensor, [bb_images], tf.float32)
 

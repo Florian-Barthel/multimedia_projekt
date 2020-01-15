@@ -7,8 +7,12 @@ Filters all images that have more than max_labels labels
 '''
 max_labels = 5
 
-src_folder = 'C:/Users/Florian/Desktop/dataset_2'
-dest_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd'
+src_folder = 'C:/Users/Florian/Desktop/dataset_3_apply_filter'
+dest_folder = 'C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd'
+
+if not os.path.exists(dest_folder):
+    os.makedirs(dest_folder)
+
 
 num_kept = 0
 num_filtered = 0

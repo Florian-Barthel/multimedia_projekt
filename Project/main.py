@@ -60,6 +60,7 @@ with tf.Session() as sess:
     else:
         total_loss = probabilities_loss
 
+
     def optimize(target_loss):
         if config.use_adam_optimizer:
             optimizer = tf.train.AdamOptimizer(learning_rate=config.learning_rate)
@@ -128,8 +129,9 @@ with tf.Session() as sess:
 
                 evaluation.prepare_detections(probabilities_output, anchor_grid, test_paths, detection_path_normal)
 
-                evaluation.prepare_detections(probabilities_output, anchor_grid_bbr_output, test_paths,
-                                              detection_path_bbr)
+                if config.use_bounding_box_regression:
+                    evaluation.prepare_detections(probabilities_output, anchor_grid_bbr_output, test_paths,
+                                                  detection_path_bbr)
 
             py_mAP_normal = validation.run(
                 detection_file=detection_path_normal,

@@ -33,6 +33,17 @@ def get_dict_from_folder(folder):
     return result_dict
 
 
+def draw_labels(image, anchor_grid, labels, color):
+    annotation_rects = convert_to_annotation_rects_label(anchor_grid, labels)
+    for rect in annotation_rects:
+        draw = ImageDraw.Draw(image)
+        draw.rectangle(
+            xy=[rect.x1, rect.y1, rect.x2, rect.y2],
+            outline=color
+        )
+    return image
+
+
 def draw_bounding_boxes(image, annotation_rects, color):
     for rect in annotation_rects:
         draw = ImageDraw.Draw(image)
@@ -42,8 +53,8 @@ def draw_bounding_boxes(image, annotation_rects, color):
         )
     return image
 
-def calculate_overlap_boxes_tensor(labels_tensor, anchor_grid_tensor):
 
+def calculate_overlap_boxes_tensor(labels_tensor, anchor_grid_tensor):
     def py_get_overlap_boxes(labels):
         ar_boxes = []
         
@@ -61,6 +72,7 @@ def calculate_overlap_boxes_tensor(labels_tensor, anchor_grid_tensor):
         return np.array(ar_boxes, dtype=np.int32)
 
     return tf.py_func(py_get_overlap_boxes, [labels_tensor], tf.int32)
+
 
 def make_random_batch(batch_size, anchor_grid):
     items = get_dict_from_folder('train')
@@ -121,6 +133,7 @@ def get_validation_data(package_size, anchor_grid):
     return result
 
 
+# deprecated
 def convert_to_annotation_rects_output(anchor_grid, output, confidence=0.7):
     calc_softmax = softmax(output, axis=-1)
     foreground = np.delete(calc_softmax, [0], axis=-1)

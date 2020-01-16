@@ -14,7 +14,7 @@ current_time = datetime.now()
 # Non-maximum-suppression with default threshold of 0.3 (IoU)
 # Input: dict of boxes AnnotationRect:Score, (optional) IoU threshold
 # Output: dict of resulting AnnotationRect:Score boxes after suppression
-def non_maximum_suppression(boxes, threshold=0.3):
+def non_maximum_suppression(boxes):
     output = {}
     # Loop until boxes is empty
     while boxes:
@@ -24,7 +24,7 @@ def non_maximum_suppression(boxes, threshold=0.3):
         boxes.pop(max_box)
         # Remove all boxes with IoU > threshold
         for b in list(boxes):
-            if geometry.iou(max_box, b) >= threshold:
+            if geometry.iou(max_box, b) >= config.nms_threshold:
                 boxes.pop(b)
     return output
 
@@ -32,23 +32,14 @@ def non_maximum_suppression(boxes, threshold=0.3):
 # Creating dict of boxes AnnotationRect:Score from the output and the anchor grid
 def create_boxes_dict(data, anchor_grid):
     boxes_dict = {}
-    scores = []
     calc_softmax = softmax(data, axis=-1)
     foreground = np.delete(calc_softmax, [0], axis=-1)
-    # Get the scores from the data
-    for rows in range(config.f_map_rows):
-        for cols in range(config.f_map_cols):
-            for scales in range(len(config.scales)):
-                for ratios in range(len(config.aspect_ratios)):
-                    # might remove last index 0
-                    if foreground[rows, cols, scales, ratios, 0] > config.detection_foreground_threshold:
-                        scores.append(foreground[rows, cols, scales, ratios, 0])
-    # Get the boxes from the data
     indices = np.where(foreground > config.detection_foreground_threshold)[:4]
+    scores = foreground[indices]
     max_boxes = anchor_grid[indices]
     boxes = [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
     for i in range(len(boxes)):
-        boxes_dict[boxes[i]] = scores[i]
+        boxes_dict[boxes[i]] = scores[i, 0]
     return boxes_dict
 
 
@@ -68,7 +59,7 @@ def save_boxes(boxes, image_path, detection_file):
 
 # Prepares detections from the output and anchor_grid applying non-maximum-suppression
 # and saving the resulting detections to disk
-def prepare_detections(output, anchor_grid, image_paths, detection_file, nms_threshold=0.3):
+def prepare_detections(output, anchor_grid, image_paths, detection_file):
     for i in range(len(image_paths)):
 
         # check if anchor_grid is static or from bbr
@@ -77,5 +68,5 @@ def prepare_detections(output, anchor_grid, image_paths, detection_file, nms_thr
         else:
             ag = anchor_grid
         boxes_dict = create_boxes_dict(output[i], ag)
-        nms = non_maximum_suppression(boxes_dict, nms_threshold)
+        nms = non_maximum_suppression(boxes_dict)
         save_boxes(nms, image_paths[i], detection_file)

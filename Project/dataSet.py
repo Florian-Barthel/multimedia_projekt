@@ -9,22 +9,21 @@ crop_factor = 0.1
 # percentage of applied augmentations
 augmentation_factor = 0.15
 
+
 # returns images of shape [batch_size, 320, 320, 3] and labels of shape [batch_size, None, 4)]
 def create(path, batch_size):
-    
     dataset = tf.data.Dataset.list_files(path + '/*.jpg')
 
-    def create_label_array(lines):
+    def create_gt_array(lines):
         rects = []
         lines_decoded = str(lines.decode("utf-8")).split("\n")
         for line in lines_decoded:
             if(line):
                 tokens = line.split(' ')
-                annotation_rect = ([[float(tokens[1]) / image_height, float(tokens[0]) / image_width, float(tokens[3]) / image_height, float(tokens[2]) / image_width]])
+                annotation_rect = ([[float(tokens[0]) / image_width, float(tokens[1]) / image_height, float(tokens[2]) / image_width, float(tokens[3]) / image_height]])
                 rects.append(annotation_rect)
 
         return np.asarray(rects, dtype=np.float32)
-
 
     def get_image_and_bb_images(file_name, label_array):
         image = tf.io.read_file(file_name)
@@ -47,12 +46,10 @@ def create(path, batch_size):
 
         return image, bounding_box_images
 
-
     def get_bounding_box_images(label_array):
         bounding_box_images = tf.zeros([tf.shape(label_array)[0], image_height, image_width, 1], dtype=tf.float32)
         bounding_box_images = tf.image.draw_bounding_boxes(bounding_box_images, label_array)
         return bounding_box_images
-
 
     def parse_image(file_name):
         image = tf.io.read_file(file_name)
@@ -63,7 +60,6 @@ def create(path, batch_size):
         # Normalize
         return tf.cast(image, tf.float32) / 127.5 - 1
 
-
     def bmp_to_annotation_rect(img):
         img = (img > 0)
         rows = np.any(img, axis=1)
@@ -71,7 +67,6 @@ def create(path, batch_size):
         h_min, h_max = np.argmax(cols), img.shape[1] - 1 - np.argmax(np.flipud(cols))
         w_min, w_max = np.argmax(rows), img.shape[0] - 1 - np.argmax(np.flipud(rows))
         return AnnotationRect(h_min, w_min, h_max, w_max)
-
 
     def bounding_box_images_to_gt_tensor(bounding_box_images):
         gt_boxes = []
@@ -87,7 +82,6 @@ def create(path, batch_size):
         rotated_image = tf.contrib.image.transform(image, random_rotate_matrix)
         rotated_bb_images = tf.contrib.image.transform(bb_images, random_rotate_matrix)
         return rotated_image, rotated_bb_images
-
 
     def random_crop(image, bb_images):
         image_dim = tf.constant([image_height, image_width], dtype=tf.int32)
@@ -124,14 +118,12 @@ def create(path, batch_size):
         image = tf.image.random_jpeg_quality(image, 80, 100)
         return image, bb_images
 
-
     def random_color(image, bb_images):
         image = tf.image.random_hue(image, 0.08)
         image = tf.image.random_saturation(image, 0.6, 1.6)
         image = tf.image.random_brightness(image, 0.05)
         image = tf.image.random_contrast(image, 0.7, 1.3)
         return image, bb_images
-
 
     def random_image_augmentation(image, bb_images):
         augmentations = [random_rotate,
@@ -150,12 +142,11 @@ def create(path, batch_size):
 
         return image, bb_images
 
-
     def get_image_label_and_gt(file_name):
         annotation_file = tf.io.read_file(tf.strings.split(file_name, '.jpg', result_type='RaggedTensor')[0] + '.gt_data.txt')
-        label_array = tf.py_func(create_label_array, [annotation_file], tf.float32)
+        gt_array = tf.py_func(create_gt_array, [annotation_file], tf.float32)
 
-        image, bb_images = get_image_and_bb_images(file_name, label_array)
+        image, bb_images = get_image_and_bb_images(file_name, gt_array)
         # bb_images = get_bounding_box_images()
 
         if config.use_augmentation:

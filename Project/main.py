@@ -14,6 +14,7 @@ import eval_script.eval_detections_own as validation
 from tensorboard import program
 import mobilenet
 import draw
+import dataSet_new
 
 tb = program.TensorBoard()
 tb.configure(argv=[None, '--logdir=logs'])
@@ -22,15 +23,9 @@ url = tb.launch()
 if not os.path.exists(config.detection_directory):
     os.makedirs(config.detection_directory)
 
-anchor_grid = anchorgrid.anchor_grid(f_map_rows=config.f_map_rows,
-                                     f_map_cols=config.f_map_cols,
-                                     scale_factor=config.scale_factor,
-                                     scales=config.scales,
-                                     aspect_ratios=config.aspect_ratios)
+anchor_grid_tensor = tf.constant(config.anchor_grid, dtype=tf.int32)
 
-anchor_grid_tensor = tf.constant(anchor_grid, dtype=tf.int32)
-
-train_dataset = dataSet.create(config.train_dataset, config.batch_size)
+train_dataset = dataSet_new.create(config.train_dataset, config.batch_size)
 
 handle = tf.placeholder(tf.string, shape=[])
 iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
@@ -42,9 +37,9 @@ next_element = iterator.get_next()
 with tf.Session() as sess:
     train_handle = sess.run(train_iterator.string_handle())
 
-    images_tensor, gt_labels_tensor = next_element
+    images_tensor, gt_tensor, labels_tensor = next_element
 
-    labels_tensor = dataUtil.calculate_overlap_boxes_tensor(gt_labels_tensor, anchor_grid)
+    # labels_tensor = tf.py_func(dataUtil.calculate_overlap_boxes_tensor, [gt_tensor, anchor_grid], Tout=tf.int32)
 
     features = mobilenet.mobile_net_v2()(images_tensor)
 
@@ -52,7 +47,7 @@ with tf.Session() as sess:
     probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(probabilities, labels_tensor)
 
     adjustments = graph.adjustments_output(features)
-    adjustments_loss = graph.adjustments_loss(adjustments, gt_labels_tensor, labels_tensor, anchor_grid_tensor)
+    adjustments_loss = graph.adjustments_loss(adjustments, gt_tensor, labels_tensor, anchor_grid_tensor)
     anchor_grid_adjusted = dataUtil.calculate_adjusted_anchor_grid(anchor_grid_tensor, adjustments)
 
     if config.use_bounding_box_regression:
@@ -98,7 +93,7 @@ with tf.Session() as sess:
 
     sess.run(tf.compat.v1.variables_initializer(vars_to_init))
 
-    validation_data = dataUtil.get_validation_data(100, anchor_grid)
+    validation_data = dataUtil.get_validation_data(100, config.anchor_grid)
 
     progress_bar_train = tqdm(range(config.iterations))
     for i in progress_bar_train:
@@ -127,7 +122,7 @@ with tf.Session() as sess:
                 probabilities_output, anchor_grid_bbr_output = sess.run([probabilities, anchor_grid_adjusted],
                                                                         feed_dict={images_tensor: test_images})
 
-                evaluation.prepare_detections(probabilities_output, anchor_grid, test_paths, detection_path_normal)
+                evaluation.prepare_detections(probabilities_output, config.anchor_grid, test_paths, detection_path_normal)
 
                 if config.use_bounding_box_regression:
                     evaluation.prepare_detections(probabilities_output, anchor_grid_bbr_output, test_paths,
@@ -155,6 +150,6 @@ with tf.Session() as sess:
                              labels=test_labels,
                              gts=gt_annotation_rects,
                              adjusted_anchor_grid=anchor_grid_bbr_output,
-                             original_anchor_grid=anchor_grid,
+                             original_anchor_grid=config.anchor_grid,
                              path=iteration_directory)
             # TODO: Save model

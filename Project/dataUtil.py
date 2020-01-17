@@ -54,24 +54,26 @@ def draw_bounding_boxes(image, annotation_rects, color):
     return image
 
 
-def calculate_overlap_boxes_tensor(labels_tensor, anchor_grid_tensor):
-    def py_get_overlap_boxes(labels):
-        ar_boxes = []
-        
-        for i in range(labels.shape[0]):
-            ar_batch_boxes = []
-
-            for label in labels[i]:
-                if(np.isnan(np.sum(label)) == False):
-                    ar_batch_boxes.append(AnnotationRect(int(label[1] * image_height), int(label[0] * image_width), int(label[3] * image_height), int(label[2] * image_width)))
-
-            max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid_tensor, ar_batch_boxes)
-            iou_boxes = (max_overlaps > config.iou).astype(np.int32)
-            ar_boxes.append(iou_boxes)
-
-        return np.array(ar_boxes, dtype=np.int32)
-
-    return tf.py_func(py_get_overlap_boxes, [labels_tensor], tf.int32)
+# def calculate_overlap_boxes_tensor(gt_tensor, anchor_grid):
+#     batch_labels = []
+#
+#     print(gt_tensor)
+#     for i in range(config.batch_size):
+#         labels = []
+#         print(gt_tensor[1])
+#         for j in range(gt_tensor[i]):
+#             gt_annotation_rects = []
+#
+#             for gt_box in gt_tensor[i, j]:
+#                 if not np.isnan(np.sum(gt_tensor)):
+#                     gt_annotation_rects.append(AnnotationRect(gt_box[0], gt_box[1], gt_box[2], gt_box[3]))
+#
+#             max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_annotation_rects)
+#             iou_boxes = (max_overlaps > config.iou).astype(np.int32)
+#             labels.append(iou_boxes)
+#         batch_labels.append(labels)
+#
+#     return np.array(batch_labels, dtype=np.int32)
 
 
 def make_random_batch(batch_size, anchor_grid):

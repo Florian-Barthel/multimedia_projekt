@@ -1,7 +1,7 @@
 from tqdm import tqdm
 import shutil
 import os
-from annotationRect import AnnotationRect
+
 
 '''
 Filter all boxes with greater width than height

@@ -10,9 +10,15 @@ Filters all images that have more than max_labels labels
 min_size = 1000
 
 
-src_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd'
-dest_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd_min'
-remove_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd_min_remove'
+src_folder = 'C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd'
+dest_folder = 'C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd_min'
+remove_folder = 'C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd_min_removed'
+
+if not os.path.exists(dest_folder):
+    os.makedirs(dest_folder)
+
+if not os.path.exists(remove_folder):
+    os.makedirs(remove_folder)
 
 num_kept = 0
 num_filtered = 0

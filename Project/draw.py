@@ -17,7 +17,7 @@ def draw_images(num_images, images, output, labels, gts, adjusted_anchor_grid, o
         '''
         Normal
         '''
-        boxes_dict = evaluation.create_boxes_dict(output[k], original_anchor_grid)
+        boxes_dict = evaluation.create_boxes_dict(output[k], original_anchor_grid, 0.5)
         nms = evaluation.non_maximum_suppression(boxes_dict)
         boxes = list(nms.keys())
 
@@ -33,7 +33,7 @@ def draw_images(num_images, images, output, labels, gts, adjusted_anchor_grid, o
         Bounding box regression
         '''
         if config.use_bounding_box_regression:
-            boxes_dict_bbr = evaluation.create_boxes_dict(output[k], adjusted_anchor_grid[k])
+            boxes_dict_bbr = evaluation.create_boxes_dict(output[k], adjusted_anchor_grid[k], 0.5)
             nms_bbr = evaluation.non_maximum_suppression(boxes_dict_bbr)
             boxes_bbr = list(nms_bbr.keys())
 

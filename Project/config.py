@@ -18,8 +18,8 @@ augmentation_probability = 0.15
 
 f_map_rows = 10
 f_map_cols = 10
-scales = [80, 120, 150]
-aspect_ratios = [1.0, 1.5, 2.0]
+scales = [80, 100, 150]
+aspect_ratios = [0.5, 1.0, 2.0]
 scale_factor = 32.0
 
 anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
@@ -30,13 +30,14 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
 
 batch_size = 16
 iterations = 50000
-validation_interval = 5000
+validation_interval = 2000
 
 iou = 0.5
+nms_threshold = 0.3
+
 negative_example_factor = 10
 
-detection_foreground_threshold = 0.005
-nms_threshold = 0.3
+detection_foreground_threshold = 0.05
 
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
 current_time = datetime.now()
@@ -60,7 +61,7 @@ else:
 
 if use_different_dataset:
     # Local
-    train_dataset = "C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio"
+    train_dataset = "C:/Users/Florian/Desktop/dataset_2_crowd_min"
 
     # Server
     # train_dataset = "../datasets/dataset_3_apply_filter_crowd_min"

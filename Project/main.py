@@ -41,7 +41,7 @@ with tf.Session() as sess:
 
     # labels_tensor = tf.py_func(dataUtil.calculate_overlap_boxes_tensor, [gt_tensor, anchor_grid], Tout=tf.int32)
 
-    features = mobilenet.mobile_net_v2()(images_tensor)
+    features = mobilenet.mobile_net_v2()(images_tensor, training=False)
 
     probabilities = graph.probabilities_output(features)
     probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(probabilities, labels_tensor)
@@ -114,8 +114,8 @@ with tf.Session() as sess:
             if not os.path.exists(iteration_directory):
                 os.makedirs(iteration_directory)
 
-            detection_path_normal = iteration_directory + 'detection_bbr.txt'
-            detection_path_bbr = iteration_directory + 'detection_normal.txt'
+            detection_path_normal = iteration_directory + 'detection_normal.txt'
+            detection_path_bbr = iteration_directory + 'detection_bbr.txt'
             print('\nvalidation...')
             for j in range(len(validation_data)):
                 (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[j]

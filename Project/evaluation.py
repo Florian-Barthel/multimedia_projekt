@@ -30,16 +30,16 @@ def non_maximum_suppression(boxes):
 
 
 # Creating dict of boxes AnnotationRect:Score from the output and the anchor grid
-def create_boxes_dict(data, anchor_grid):
+def create_boxes_dict(data, anchor_grid, foreground_threshold=0.05):
     boxes_dict = {}
     calc_softmax = softmax(data, axis=-1)
     foreground = np.delete(calc_softmax, [0], axis=-1)
-    indices = np.where(foreground > config.detection_foreground_threshold)[:4]
+    indices = np.where(foreground > foreground_threshold)[:4]
     scores = foreground[indices]
     max_boxes = anchor_grid[indices]
-    boxes = [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
-    for i in range(len(boxes)):
-        boxes_dict[boxes[i]] = scores[i, 0]
+    # boxes = [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
+    for i in range(len(scores)):
+        boxes_dict[AnnotationRect(*max_boxes[i])] = scores[i, 0]
     return boxes_dict
 
 

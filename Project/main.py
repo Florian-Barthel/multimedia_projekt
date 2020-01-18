@@ -4,11 +4,9 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import tensorflow as tf
-import dataSet
 import config
 import dataUtil
 import graph
-import anchorgrid
 import evaluation
 import eval_script.eval_detections_own as validation
 from tensorboard import program
@@ -22,6 +20,7 @@ url = tb.launch()
 
 if not os.path.exists(config.detection_directory):
     os.makedirs(config.detection_directory)
+
 
 anchor_grid_tensor = tf.constant(config.anchor_grid, dtype=tf.int32)
 
@@ -38,8 +37,6 @@ with tf.Session() as sess:
     train_handle = sess.run(train_iterator.string_handle())
 
     images_tensor, gt_tensor, labels_tensor = next_element
-
-    # labels_tensor = tf.py_func(dataUtil.calculate_overlap_boxes_tensor, [gt_tensor, anchor_grid], Tout=tf.int32)
 
     features = mobilenet.mobile_net_v2()(images_tensor, training=False)
 
@@ -76,7 +73,7 @@ with tf.Session() as sess:
     # mAP = tf.placeholder(shape=(), dtype=tf.float32)
     # tf.summary.scalar('score/mAP', mAP)
 
-    tf.summary.scalar('debug/Number of positivies', num_predicted)
+    tf.summary.scalar('debug/Number of positives', num_predicted)
 
     merged_summary = tf.summary.merge_all()
     log_writer = tf.summary.FileWriter(config.logs_directory, sess.graph, flush_secs=1)
@@ -120,7 +117,8 @@ with tf.Session() as sess:
             for j in range(len(validation_data)):
                 (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[j]
                 probabilities_output, anchor_grid_bbr_output = sess.run([probabilities, anchor_grid_adjusted],
-                                                                        feed_dict={images_tensor: test_images})
+                                                                        feed_dict={images_tensor: test_images,
+                                                                                   labels_tensor: test_labels})
 
                 evaluation.prepare_detections(probabilities_output, config.anchor_grid, test_paths, detection_path_normal)
 

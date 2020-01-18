@@ -4,6 +4,11 @@ import geometry
 import tensorflow as tf
 import config
 from config import image_height, image_width
+import pickle
+
+with open('max_gt_overlaps_objects/' + '[80,100,150]_[0.5,1.0,2.0]_dataset_3_apply_filter_crowd_min.pkl',
+          'rb') as handle:
+    max_gt_overlap_dict = pickle.load(handle)
 
 
 # returns images of shape [batch_size, 320, 320, 3]
@@ -42,6 +47,12 @@ def get_label_grid(gts):
     max_overlaps = geometry.anchor_max_gt_overlaps(config.anchor_grid, rects)
     label_grid = (max_overlaps > config.iou).astype(np.int32)
     return label_grid
+
+
+def get_label_grid_fast(image_name):
+    image_name = image_name.decode("utf-8")
+    image_name = image_name.split('\\')[-1]
+    return max_gt_overlap_dict[str(image_name)]
 
 
 def random_flip(image, gts):
@@ -83,16 +94,19 @@ def get_image_and_gt(file_name):
     if config.use_augmentation:
         image, gt_array = random_image_augmentation(image, gt_array)
 
-    label_grid = tf.py_func(get_label_grid, [gt_array], Tout=tf.int32)
+    # label_grid = tf.py_func(get_label_grid, [gt_array], Tout=tf.int32)
+    label_grid = tf.py_func(get_label_grid_fast, [file_name],
+                            Tout=tf.int32)
 
     return image, gt_array, label_grid
 
 
 def create(path, batch_size):
     dataset = tf.data.Dataset.list_files(path + '/*.jpg')
-    return dataset.map(get_image_and_gt).padded_batch(batch_size,
-                                                      padded_shapes=([image_height, image_width, 3], [None, 4],
-                                                                     [config.f_map_rows, config.f_map_cols,
-                                                                      len(config.scales), len(config.aspect_ratios)]),
-                                                      padding_values=(0.0, float('NaN'), 0)).repeat().prefetch(
+    return dataset.map(get_image_and_gt).repeat().padded_batch(batch_size,
+                                                               padded_shapes=([image_height, image_width, 3], [None, 4],
+                                                                              [config.f_map_rows, config.f_map_cols,
+                                                                               len(config.scales),
+                                                                               len(config.aspect_ratios)]),
+                                                               padding_values=(0.0, 0.0, 0)).prefetch(
         tf.data.experimental.AUTOTUNE)

@@ -5,8 +5,8 @@ import anchorgrid
 use_decaying_learning_rate = True
 use_augmentation = True
 use_adam_optimizer = True
-use_hard_negative_mining = True
-use_bounding_box_regression = False
+use_hard_negative_mining = False
+use_bounding_box_regression = True
 use_different_dataset = True
 
 image_width = 320
@@ -29,8 +29,8 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
                                      aspect_ratios=aspect_ratios)
 
 batch_size = 16
-iterations = 50000
-validation_interval = 2000
+iterations = 100000
+validation_interval = 10000
 
 iou = 0.5
 nms_threshold = 0.3
@@ -45,25 +45,26 @@ logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
 detection_directory = 'runs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S') + '/'
 validation_directory = 'dataset_mmp'
 
+learning_rate = 0.0001
+
+global_step = tf.Variable(0, trainable=False)
 if use_decaying_learning_rate:
-    global_step = tf.Variable(0, trainable=False)
-    if use_adam_optimizer:
-        starter_learning_rate = 0.0001
-    else:
-        starter_learning_rate = 0.001
+    starter_learning_rate = learning_rate
     learning_rate = tf.compat.v1.train.exponential_decay(starter_learning_rate, global_step, 1000, 0.95, staircase=True)
-else:
-    if use_adam_optimizer:
-        learning_rate = 0.0001
-    else:
-        learning_rate = 0.001
 
 
 if use_different_dataset:
     # Local
-    train_dataset = "C:/Users/Florian/Desktop/dataset_2_crowd_min"
+    # train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter"
+    # train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd"
+    train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd_min"
 
     # Server
+    # train_dataset = "../datasets/dataset_3_apply_filter"
+    # train_dataset = "../datasets/dataset_3_apply_filter_crowd"
     # train_dataset = "../datasets/dataset_3_apply_filter_crowd_min"
 else:
     train_dataset = 'dataset_mmp'
+
+
+

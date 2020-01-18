@@ -1,13 +1,10 @@
-from PIL import ImageDraw, Image
+from PIL import Image
 import numpy as np
 import tensorflow as tf
 import os
-import random
 from annotationRect import AnnotationRect
 import geometry
 import config
-from config import image_height, image_width
-from scipy.special import softmax
 
 folder_offset = 'dataset_mmp/'
 
@@ -23,7 +20,7 @@ def __convert_file_annotation_rect(location):
         return rects
 
 
-def get_dict_from_folder(folder):
+def __get_dict_from_folder(folder):
     result_dict = {}
     for file in os.listdir(folder_offset + folder):
         if file.endswith(".txt"):
@@ -33,73 +30,8 @@ def get_dict_from_folder(folder):
     return result_dict
 
 
-def draw_labels(image, anchor_grid, labels, color):
-    annotation_rects = convert_to_annotation_rects_label(anchor_grid, labels)
-    for rect in annotation_rects:
-        draw = ImageDraw.Draw(image)
-        draw.rectangle(
-            xy=[rect.x1, rect.y1, rect.x2, rect.y2],
-            outline=color
-        )
-    return image
-
-
-def draw_bounding_boxes(image, annotation_rects, color):
-    for rect in annotation_rects:
-        draw = ImageDraw.Draw(image)
-        draw.rectangle(
-            xy=[rect.x1, rect.y1, rect.x2, rect.y2],
-            outline=color
-        )
-    return image
-
-
-# def calculate_overlap_boxes_tensor(gt_tensor, anchor_grid):
-#     batch_labels = []
-#
-#     print(gt_tensor)
-#     for i in range(config.batch_size):
-#         labels = []
-#         print(gt_tensor[1])
-#         for j in range(gt_tensor[i]):
-#             gt_annotation_rects = []
-#
-#             for gt_box in gt_tensor[i, j]:
-#                 if not np.isnan(np.sum(gt_tensor)):
-#                     gt_annotation_rects.append(AnnotationRect(gt_box[0], gt_box[1], gt_box[2], gt_box[3]))
-#
-#             max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_annotation_rects)
-#             iou_boxes = (max_overlaps > config.iou).astype(np.int32)
-#             labels.append(iou_boxes)
-#         batch_labels.append(labels)
-#
-#     return np.array(batch_labels, dtype=np.int32)
-
-
-def make_random_batch(batch_size, anchor_grid):
-    items = get_dict_from_folder('train')
-    images = []
-    labels = []
-    gt_rects = []
-    image_paths = [None] * batch_size
-    for i in range(batch_size):
-        image_paths[i], gt_annotation_rects = random.choice(list(items.items()))
-        gt_rects.append(gt_annotation_rects)
-
-        img = np.array(Image.open(image_paths[i]))
-        h, w = img.shape[:2]
-        img_pad = np.pad(img, pad_width=((0, 320 - h), (0, 320 - w), (0, 0)), mode='constant', constant_values=0)
-        img_norm = img_pad.astype(np.float32) / 127.5 - 1
-        images.append(img_norm)
-
-        max_overlaps = geometry.anchor_max_gt_overlaps(anchor_grid, gt_annotation_rects)
-        label_grid = (max_overlaps > config.iou).astype(np.int32)
-        labels.append(label_grid)
-    return images, labels, gt_rects, image_paths
-
-
 def get_validation_data(package_size, anchor_grid):
-    items = get_dict_from_folder('test')
+    items = __get_dict_from_folder('test')
     images = []
     labels = []
     gt_rects = []
@@ -133,22 +65,6 @@ def get_validation_data(package_size, anchor_grid):
             image_paths = []
     result.append((np.asarray(images), np.asarray(labels), np.asarray(gt_rects), np.asarray(image_paths)))
     return result
-
-
-# deprecated
-def convert_to_annotation_rects_output(anchor_grid, output, confidence=0.7):
-    calc_softmax = softmax(output, axis=-1)
-    foreground = np.delete(calc_softmax, [0], axis=-1)
-    indices = np.where(foreground > confidence)[:4]
-    max_boxes = anchor_grid[indices]
-    return [AnnotationRect(*max_boxes[i]) for i in range(len(max_boxes))]
-
-
-def convert_to_annotation_rects_label(anchor_grid, labels):
-    indices = np.where(labels == 1)[:4]
-    max_boxes = anchor_grid[indices]
-    annotated_boxes = [AnnotationRect(*max_boxes[i]) for i in range(len(max_boxes))]
-    return annotated_boxes
 
 
 def calculate_adjusted_anchor_grid(anchor_grid, adjustments):

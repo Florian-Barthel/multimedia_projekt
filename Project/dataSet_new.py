@@ -50,8 +50,9 @@ def get_label_grid(gts):
 
 
 def get_label_grid_fast(image_name):
-    image_name = image_name.decode("utf-8")
-    image_name = image_name.split('\\')[-1]
+    image_name = image_name.decode('utf-8')
+    image_name = image_name.replace('\\', '/')
+    image_name = image_name.split('/')[-1]
     return max_gt_overlap_dict[str(image_name)]
 
 
@@ -84,7 +85,7 @@ def random_image_augmentation(image, gt_array):
     return image, gt_array
 
 
-def get_image_and_gt(file_name):
+def get_image_label_gt(file_name):
     image_name = tf.strings.split(file_name, '.jpg', result_type='RaggedTensor')[0]
     annotation_file = tf.io.read_file(image_name + '.gt_data.txt')
 
@@ -103,10 +104,11 @@ def get_image_and_gt(file_name):
 
 def create(path, batch_size):
     dataset = tf.data.Dataset.list_files(path + '/*.jpg')
-    return dataset.map(get_image_and_gt).repeat().padded_batch(batch_size,
-                                                               padded_shapes=([image_height, image_width, 3], [None, 4],
-                                                                              [config.f_map_rows, config.f_map_cols,
-                                                                               len(config.scales),
-                                                                               len(config.aspect_ratios)]),
-                                                               padding_values=(0.0, 0.0, 0)).prefetch(
+    return dataset.map(get_image_label_gt).repeat().padded_batch(batch_size,
+                                                                 padded_shapes=(
+                                                                     [image_height, image_width, 3], [None, 4],
+                                                                     [config.f_map_rows, config.f_map_cols,
+                                                                      len(config.scales),
+                                                                      len(config.aspect_ratios)]),
+                                                                 padding_values=(0.0, 0.0, 0)).prefetch(
         tf.data.experimental.AUTOTUNE)

@@ -54,12 +54,8 @@ with tf.Session() as sess:
 
 
     def optimize(target_loss):
-        if config.use_adam_optimizer:
-            optimizer = tf.train.AdamOptimizer(learning_rate=config.learning_rate)
-            objective = optimizer.minimize(loss=target_loss, global_step=config.global_step)
-        else:
-            optimizer = tf.train.GradientDescentOptimizer(config.learning_rate)
-            objective = optimizer.minimize(target_loss)
+        optimizer = tf.train.AdamOptimizer(learning_rate=config.learning_rate)
+        objective = optimizer.minimize(loss=target_loss, global_step=config.global_step)
         return objective
 
 

@@ -25,7 +25,7 @@ def non_maximum_suppression(boxes, threshold=0.3):
         max_box = max(boxes, key=boxes.get)
         output[max_box] = boxes[max_box]
         boxes.pop(max_box)
-        # Remove all boxes with IoU > threshold
+        # Remove all boxes with IoU >= threshold
         for b in list(boxes):
             if geometry.iou(max_box, b) >= threshold:
                 boxes.pop(b)

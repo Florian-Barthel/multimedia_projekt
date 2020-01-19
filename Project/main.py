@@ -97,7 +97,6 @@ with tf.Session() as sess:
         '''
         Run validation every 500 iterations
         '''
-        # TODO: Save model
         if (i + 1) % 501 == 0:
             detection_file = str(i) + '_detection.txt'
             print('validation...')

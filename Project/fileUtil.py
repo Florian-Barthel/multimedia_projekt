@@ -17,13 +17,14 @@ current_time = datetime.now()
 logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
 detection_directory = 'eval_script/detections/' + current_time.strftime('%d-%m-%Y_%H-%M-%S') + '/'
 validation_directory = 'dataset_mmp'
-model_directory = './models/'
+model_directory = detection_directory + 'model/'
 
 if not os.path.exists(detection_directory):
     os.makedirs(detection_directory)
-
+if not os.path.exists(model_directory):
+        os.makedirs(model_directory)
 def save_model(saver, sess):
-    saver.save(sess, model_directory + current_time.strftime('%d-%m-%Y_%H-%M-%S') + '/model')
+    saver.save(sess, model_directory + 'model')
 
 def load_model(model_path, sess):
     saver = tf.train.import_meta_graph(model_path + "model.meta")

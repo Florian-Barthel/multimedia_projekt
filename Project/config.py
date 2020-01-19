@@ -5,7 +5,7 @@ import anchorgrid
 use_decaying_learning_rate = True
 use_augmentation = True
 use_hard_negative_mining = False
-use_bounding_box_regression = False
+use_bounding_box_regression = True
 use_different_dataset = True
 
 image_width = 320
@@ -29,7 +29,7 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
 
 batch_size = 16
 iterations = 100000
-validation_interval = 10000
+validation_interval = 500
 
 iou = 0.5
 nms_threshold = 0.3
@@ -56,12 +56,12 @@ if use_different_dataset:
     # Local
     # train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter"
     # train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd"
-    # train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd_min"
+    train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd_min"
 
     # Server
     # train_dataset = "../datasets/dataset_3_apply_filter"
     # train_dataset = "../datasets/dataset_3_apply_filter_crowd"
-    train_dataset = "../datasets/dataset_3_apply_filter_crowd_min"
+    # train_dataset = "../datasets/dataset_3_apply_filter_crowd_min"
 else:
     train_dataset = 'dataset_mmp'
 

@@ -22,7 +22,7 @@ if not os.path.exists(config.detection_directory):
     os.makedirs(config.detection_directory)
 
 
-anchor_grid_tensor = tf.constant(config.anchor_grid, dtype=tf.int32)
+anchor_grid_tensor = tf.constant(config.anchor_grid, dtype=tf.float32)
 
 train_dataset = dataSet_new.create(config.train_dataset, config.batch_size)
 
@@ -44,11 +44,11 @@ with tf.Session() as sess:
     probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(probabilities, labels_tensor)
 
     adjustments = graph.adjustments_output(features)
-    adjustments_loss = graph.adjustments_loss(adjustments, gt_tensor, labels_tensor, anchor_grid_tensor)
+    adjustments_loss, filtered_min_adjustments, gts, grid_concat, min_adjustments, offset_difference, scale_difference, adjustments_size = graph.adjustments_loss(adjustments, gt_tensor, labels_tensor)
     anchor_grid_adjusted = dataUtil.calculate_adjusted_anchor_grid(anchor_grid_tensor, adjustments)
 
     if config.use_bounding_box_regression:
-        total_loss = probabilities_loss + adjustments_loss
+        total_loss = probabilities_loss + (adjustments_loss / 100)
     else:
         total_loss = probabilities_loss
 
@@ -91,13 +91,14 @@ with tf.Session() as sess:
     progress_bar_train = tqdm(range(config.iterations))
     for i in progress_bar_train:
         progress_bar_train.set_description('TRAIN | ')
-        loss, labels, weights, predicted, _, summary = sess.run(
-            [[total_loss, probabilities_loss, adjustments_loss], num_labels, num_weights, num_predicted, optimize,
+        loss, adjustments_size_, grid_concat_, min_adjustments_, offset_difference_, scale_difference_, filtered_min_adjustments_, gts_, labels, weights, predicted, _, summary = sess.run(
+            [[total_loss, probabilities_loss, adjustments_loss], adjustments_size, grid_concat, min_adjustments, offset_difference, scale_difference, filtered_min_adjustments, gts, num_labels, num_weights, num_predicted, optimize,
              merged_summary],
             feed_dict={handle: train_handle})  # ,
         # mAP: py_mAP})
         if i % 10 == 0:
             log_writer.add_summary(summary, i)
+            print(adjustments_loss)
 
         '''
         Run validation every 500 iterations

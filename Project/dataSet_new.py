@@ -59,7 +59,7 @@ def get_label_grid_fast(image_name):
 def random_flip(image, gts):
     image = tf.image.flip_left_right(image)
     width = tf.constant([image_width, 0, image_width, 0], dtype=tf.float32)
-    gts_flipped = width - gts
+    gts_flipped = tf.abs(width - gts)
     return image, gts_flipped
 
 
@@ -110,5 +110,5 @@ def create(path, batch_size):
                                                                      [config.f_map_rows, config.f_map_cols,
                                                                       len(config.scales),
                                                                       len(config.aspect_ratios)]),
-                                                                 padding_values=(0.0, 0.0, 0)).prefetch(
+                                                                 padding_values=(0.0, float('NaN'), 0)).prefetch(
         tf.data.experimental.AUTOTUNE)

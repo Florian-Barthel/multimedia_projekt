@@ -6,7 +6,7 @@ def anchor_grid(f_map_rows, f_map_cols, scale_factor, scales, aspect_ratios):
                       f_map_cols,
                       len(scales),
                       len(aspect_ratios),
-                      4)
+                      4), dtype=np.float32
                      )
 
     for y in range(f_map_rows):

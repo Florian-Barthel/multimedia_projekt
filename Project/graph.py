@@ -72,7 +72,7 @@ def adjustments_output(features):
                                                strides=1,
                                                padding='same',
                                                activation=None,
-                                               kernel_initializer=tf.constant_initializer(0.0),
+                                               kernel_initializer=tf.truncated_normal_initializer(),
                                                kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005),
                                                bias_initializer=tf.constant_initializer(0.0),
                                                bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005))
@@ -85,46 +85,88 @@ def adjustments_output(features):
                                                 4])
 
 
-def adjustments_loss(adjustments, gts, labels, ag):
+# def adjustments_loss(adjustments, gts, labels, ag):
+#     num_batch_size = tf.shape(adjustments)[0]
+#     num_anchors = tf.reduce_prod(tf.shape(adjustments)[1:5])
+#     num_max_gts = tf.shape(gts)[1]
+#
+#     mask = tf.cast(tf.reshape(labels, [num_batch_size, num_anchors]), tf.bool)
+#
+#     gts = tf.cast(gts, tf.float32) * tf.constant([image_height, image_width, image_height, image_width], tf.float32)
+#     gts = tf.tile(tf.expand_dims(gts, 1), [1, num_anchors, 1, 1])
+#     gt_sizes = tf.abs(gts[..., 2:4] - gts[..., 0:2])
+#
+#     ag_batched = tf.cast(tf.tile(tf.expand_dims(ag, 0), [num_batch_size, 1, 1, 1, 1, 1]), tf.float32)
+#     ag_batched = tf.reshape(ag_batched, [num_batch_size, num_anchors, 4])
+#     ag_batched = tf.tile(tf.expand_dims(ag_batched, -2), [1, 1, num_max_gts, 1])
+#     anchor_grid_sizes = tf.abs(ag_batched[..., 2:4] - ag_batched[..., 0:2])
+#
+#     adjustments = tf.reshape(adjustments, [num_batch_size, num_anchors, 4])
+#     adjustments = tf.boolean_mask(adjustments, mask)
+#
+#     offset_targets = (gts[..., 0:2] - ag_batched[..., 0:2]) / anchor_grid_sizes
+#     scale_targets = tf.math.log((gt_sizes / anchor_grid_sizes))
+#
+#     targets = tf.concat([offset_targets, scale_targets], -1)
+#     targets = tf.where(tf.math.is_nan(targets), tf.fill(tf.shape(targets), tf.constant(float("Inf"), tf.float32)),
+#                        targets)
+#     # indices = tf.math.argmin(tf.reduce_sum(tf.abs(targets)), axis=-1)
+#     # targets = tf.gather(targets, indices, axis=-2)
+#     targets = tf.math.reduce_min(targets, axis=-2)
+#     targets = tf.boolean_mask(targets, mask)
+#
+#     regression_loss = tf.losses.mean_squared_error(targets, adjustments)
+#     regularization_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='adjustments'))
+#
+#     return tf.cast(regression_loss, tf.float32) + regularization_loss
+
+
+def adjustments_loss(adjustments, input_gts, labels):
     num_batch_size = tf.shape(adjustments)[0]
+    num_max_gts = tf.shape(input_gts)[1]
     num_anchors = tf.reduce_prod(tf.shape(adjustments)[1:5])
-    num_max_gts = tf.shape(gts)[1]
-
-    mask = tf.cast(tf.reshape(labels, [num_batch_size, num_anchors]), tf.bool)
-
-    # why norm backwards
-    gts = tf.cast(gts, tf.float32) * tf.constant([image_height, image_width, image_height, image_width], tf.float32)
-    gts = tf.tile(tf.expand_dims(gts, 1), [1, num_anchors, 1, 1])
-    gt_sizes = gts[..., 2:4] - gts[..., 0:2]
-
-    # anchor grid auf batch_size multiplizieren
-    ag_batched = tf.cast(tf.tile(tf.expand_dims(ag, 0), [num_batch_size, 1, 1, 1, 1, 1]), tf.float32)
-    ag_batched = tf.reshape(ag_batched, [num_batch_size, num_anchors, 4])
-    ag_batched = tf.tile(tf.expand_dims(ag_batched, -2), [1, 1, num_max_gts, 1])
-    # shape = (batch_size, num_anchors, num_max_gts, 4)
-
-    anchor_grid_sizes = ag_batched[..., 2:4] - ag_batched[..., 0:2]
-    # shape = (batch_size, num_anchors, num_max_gts, 2)
 
     adjustments = tf.reshape(adjustments, [num_batch_size, num_anchors, 4])
-    adjustments = tf.boolean_mask(adjustments, mask)
+    adjustments = tf.tile(tf.expand_dims(adjustments, -2), [1, 1, num_max_gts, 1])
 
-    offset_targets = (gts[..., 0:2] - ag_batched[..., 0:2]) / anchor_grid_sizes
-    scale_targets = tf.math.log((gt_sizes / anchor_grid_sizes))
+    gts = tf.tile(tf.expand_dims(input_gts, 1), [1, num_anchors, 1, 1])
 
-    targets = tf.concat([offset_targets, scale_targets], -1)
-    # shape = (batch_size, num_anchors, num_max_gts, 4)
-    targets = tf.where(tf.math.is_nan(targets), tf.fill(tf.shape(targets), tf.constant(float("Inf"), tf.float32)),
-                       targets)
+    gts_xy1 = tf.where(tf.math.is_nan(gts[..., 0:2]),
+                       tf.fill(tf.shape(gts[..., 0:2]), tf.constant(-10000, tf.float32)),
+                       gts[..., 0:2])
+    gts_xy2 = tf.where(tf.math.is_nan(gts[..., 2:4]),
+                       tf.fill(tf.shape(gts[..., 2:4]), tf.constant(10000, tf.float32)),
+                       gts[..., 2:4])
 
-    # differences = tf.reduce_sum(tf.abs(targets), axis=-1)
-    # min_difference_indices = tf.reduce_min(differences, axis=-1)
-    # targets = tf.where(differences == min_difference_indices, targets, tf.constant(, tf.float32))
+    gts = tf.concat([gts_xy1, gts_xy2], axis=-1)
 
-    targets = tf.reduce_min(tf.abs(targets), -2)
-    targets = tf.boolean_mask(targets, mask)
+    gt_sizes = tf.abs(gts[..., 2:4] - gts[..., 0:2])
 
-    regression_loss = tf.losses.mean_squared_error(targets, adjustments)
+    adjustments_size = tf.abs(adjustments[..., 2:4] - adjustments[..., 0:2])
+    offset_difference = (gts[..., 0:2] - adjustments[..., 0:2]) / adjustments_size
+    scale_difference = tf.math.log(gt_sizes / adjustments_size)
+
+    adjustment = tf.concat([offset_difference, scale_difference], axis=-1)
+
+    adjustment_sum = tf.reduce_sum(tf.abs(adjustment), axis=-1)
+    adjustment_sum_min = tf.math.argmin(adjustment_sum, axis=-1)
+    adjustment_sum_min_expand = tf.expand_dims(adjustment_sum_min, -1)
+
+    batch_range = tf.range(num_batch_size)
+    anchor_range = tf.range(num_anchors)
+    grid = tf.meshgrid(anchor_range, batch_range)
+    grid_expand_x = tf.cast(tf.expand_dims(grid[0], -1), tf.int64)
+    grid_expand_y = tf.cast(tf.expand_dims(grid[1], -1), tf.int64)
+    grid_concat = tf.concat([grid_expand_y, grid_expand_x], axis=-1)
+
+    indices = tf.concat([grid_concat, adjustment_sum_min_expand], axis=-1)
+
+    min_adjustments = tf.gather_nd(adjustment, indices)
+
+    mask = tf.cast(tf.reshape(labels, [num_batch_size, num_anchors]), tf.bool)
+    filtered_min_adjustments = tf.boolean_mask(min_adjustments, mask)
+
+    # regression_loss = tf.nn.l2_loss(filtered_min_adjustments)
+    regression_loss = tf.math.square(tf.reduce_sum(filtered_min_adjustments))
     regularization_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='adjustments'))
-
-    return tf.cast(regression_loss, tf.float32) + regularization_loss
+    return regression_loss + regularization_loss, filtered_min_adjustments, gts, grid_concat, min_adjustments, offset_difference, scale_difference, adjustments_size

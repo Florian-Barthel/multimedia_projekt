@@ -72,8 +72,7 @@ def random_color(image, gts):
 
 
 def random_image_augmentation(image, gt_array):
-    augmentation_functions = [random_color,
-                              random_flip]
+    augmentation_functions = [random_color]
 
     def no_augmentation(keep_image, keep_gt_array):
         return keep_image, keep_gt_array

@@ -48,7 +48,7 @@ with tf.Session() as sess:
     anchor_grid_adjusted = dataUtil.calculate_adjusted_anchor_grid(anchor_grid_tensor, adjustments)
 
     if config.use_bounding_box_regression:
-        total_loss = probabilities_loss + adjustments_loss
+        total_loss = probabilities_loss * adjustments_loss
     else:
         total_loss = probabilities_loss
 
@@ -57,18 +57,20 @@ with tf.Session() as sess:
         optimizer = tf.train.AdamOptimizer(learning_rate=config.learning_rate)
         objective = optimizer.minimize(loss=target_loss, global_step=config.global_step)
         return objective
+        
 
     optimize = optimize(total_loss)
 
     # Tensorboard config
-    tf.summary.scalar('losses/total', total_loss)
-    tf.summary.scalar('losses/probabilities', probabilities_loss)
-    tf.summary.scalar('losses/adjustments', adjustments_loss)
+    tf.summary.scalar('1_losses/total', total_loss)
+    tf.summary.scalar('1_losses/probabilities', probabilities_loss)
+    tf.summary.scalar('1_losses/adjustments', adjustments_loss)
     # py_mAP = 0
-    # mAP = tf.placeholder(shape=(), dtype=tf.float32)
-    # tf.summary.scalar('score/mAP', mAP)
+    mAPs_tensor = tf.placeholder(shape=[2], dtype=tf.float32)
+    tf.summary.scalar('2_mAP/probabilities', mAPs_tensor[0])
+    tf.summary.scalar('2_mAP/total', mAPs_tensor[1])
 
-    tf.summary.scalar('debug/Number of positives', num_predicted)
+    tf.summary.scalar('3_debug/Number of positives', num_predicted)
 
     merged_summary = tf.summary.merge_all()
     log_writer = tf.summary.FileWriter(config.logs_directory, sess.graph, flush_secs=1)
@@ -87,13 +89,15 @@ with tf.Session() as sess:
 
     validation_data = dataUtil.get_validation_data(100, config.anchor_grid)
 
+
+    mAPs =  [0.0, 0.0]
     progress_bar_train = tqdm(range(config.iterations))
     for i in progress_bar_train:
         progress_bar_train.set_description('TRAIN | ')
         loss, labels, weights, predicted, _, summary = sess.run(
             [[total_loss, probabilities_loss, adjustments_loss], num_labels, num_weights, num_predicted, optimize,
              merged_summary],
-            feed_dict={handle: train_handle})  # ,
+            feed_dict={handle: train_handle, mAPs_tensor: mAPs})  # ,
         # mAP: py_mAP})
         if i % 10 == 0:
             log_writer.add_summary(summary, i)
@@ -113,7 +117,8 @@ with tf.Session() as sess:
                 (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[j]
                 probabilities_output, anchor_grid_bbr_output = sess.run([probabilities, anchor_grid_adjusted],
                                                                         feed_dict={images_tensor: test_images,
-                                                                                   labels_tensor: test_labels})
+                                                                                   labels_tensor: test_labels,
+                                                                                   mAPs_tensor: mAPs})
 
                 evaluation.prepare_detections(probabilities_output, config.anchor_grid, test_paths, detection_path_normal)
 
@@ -127,12 +132,16 @@ with tf.Session() as sess:
                 dataset_dir=config.validation_directory) * 100
             print('mAP static anchor grid:', py_mAP_normal)
 
+            mAPs[0] = py_mAP_normal
+
             if config.use_bounding_box_regression:
                 py_mAP_bbr = validation.run(
                     detection_file=detection_path_bbr,
                     result_file=iteration_directory + 'bbr',
                     dataset_dir=config.validation_directory) * 100
                 print('mAP bounding box regression:', py_mAP_bbr)
+
+            mAPs[1] = py_mAP_bbr
 
             # str_summary = sess.run(merged_summary, feed_dict={mAP: str(py_mAP)})
             # log_writer.add_summary(str_summary, i)

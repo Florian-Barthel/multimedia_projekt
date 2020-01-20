@@ -20,7 +20,7 @@ def probabilities_output(features):
                                                          config.f_map_cols,
                                                          len(config.scales),
                                                          len(config.aspect_ratios),
-                                                         2])
+                                                         2], name='probabilities')
 
         return probabilities
 
@@ -129,8 +129,4 @@ def adjustments_loss(adjustments, gts, labels, ag):
 
     regularization_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='adjustments'))
 
-    cast_regression_loss = tf.cast(regression_loss, tf.float32)
-
-    adjustments_loss = tf.add(cast_regression_loss, regularization_loss, name='adjustments_loss')
-
-    return adjustments_loss
+    return tf.cast(regression_loss, tf.float32) + regularization_loss

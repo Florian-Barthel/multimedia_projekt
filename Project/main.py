@@ -38,6 +38,7 @@ with tf.Session() as sess:
 
     adjustments = graph.adjustments_output(features)
     adjustments_loss = graph.adjustments_loss(adjustments, gt_tensor, labels_tensor, anchor_grid_tensor)
+    adjustments_loss = tf.identity(adjustments_loss, name='adjustments_loss')
     anchor_grid_adjusted = dataUtil.calculate_adjusted_anchor_grid(anchor_grid_tensor, adjustments)
 
     if config.use_bounding_box_regression:
@@ -112,7 +113,6 @@ with tf.Session() as sess:
                                                                         feed_dict={images_tensor: test_images,
                                                                                    labels_tensor: test_labels,
                                                                                    mAPs_tensor: mAPs})
-
                 evaluation.prepare_detections(probabilities_output, config.anchor_grid, test_paths, detection_path_normal)
 
                 if config.use_bounding_box_regression:

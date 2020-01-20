@@ -31,8 +31,10 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
                                      aspect_ratios=aspect_ratios)
 
 batch_size = 16
-iterations = 1000
-validation_interval = 100
+iterations = 10
+validation_interval = 10
+
+train_iterations = 10
 
 iou = 0.5
 nms_threshold = 0.3

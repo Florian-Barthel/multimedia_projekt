@@ -80,5 +80,5 @@ def calculate_adjusted_anchor_grid(anchor_grid, adjustments):
     sizes_adjusted = tf.math.exp(adjustments[..., 2:4]) * ag_sizes
     upper_adjusted = lower_adjusted + sizes_adjusted
 
-    ag_adjusted = tf.concat([lower_adjusted, upper_adjusted], -1)
+    ag_adjusted = tf.concat([lower_adjusted, upper_adjusted], -1, name='anchor_grid_adjusted')
     return ag_adjusted

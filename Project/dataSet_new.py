@@ -94,9 +94,8 @@ def get_image_label_gt(file_name):
     if config.use_augmentation:
         image, gt_array = random_image_augmentation(image, gt_array)
 
-    # label_grid = tf.py_func(get_label_grid, [gt_array], Tout=tf.int32)
-    label_grid = tf.py_func(get_label_grid_fast, [file_name],
-                            Tout=tf.int32)
+    label_grid = tf.py_func(get_label_grid, [gt_array], Tout=tf.int32)
+    # label_grid = tf.py_func(get_label_grid_fast, [file_name], Tout=tf.int32)
 
     return image, gt_array, label_grid
 

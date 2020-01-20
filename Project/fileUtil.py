@@ -12,19 +12,23 @@ image_path = 'test_images'
 max_drawn_images = 10
 fg_threshold = 0.7
 
-# TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
-current_time = datetime.now()
-logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
-detection_directory = 'eval_script/detections/' + current_time.strftime('%d-%m-%Y_%H-%M-%S') + '/'
-validation_directory = 'dataset_mmp'
-model_directory = detection_directory + 'model/'
+def run_tensorboard():
+    tb = program.TensorBoard()
+    tb.configure(argv=[None, '--logdir=logs'])
+    url = tb.launch()
 
-if not os.path.exists(detection_directory):
-    os.makedirs(detection_directory)
-if not os.path.exists(model_directory):
-        os.makedirs(model_directory)
+def update_directories(iteration):
+    if not os.path.exists(config.run_directory):
+        os.makedirs(config.run_directory)
+    config.iteration_directory = config.run_directory + '/' + str(iteration) + '/'
+    config.model_directory = config.iteration_directory + 'model/'
+    if not os.path.exists(config.iteration_directory):
+        os.makedirs(config.iteration_directory)
+    if not os.path.exists(config.model_directory):
+        os.makedirs(config.model_directory)
+
 def save_model(saver, sess):
-    saver.save(sess, model_directory + 'model')
+    saver.save(sess, config.model_directory + 'model')
 
 def load_model(model_path, sess):
     saver = tf.train.import_meta_graph(model_path + "model.meta")
@@ -63,9 +67,3 @@ def draw_images(test_images, test_labels, anchor_grid, ag_adjusted_output, proba
                                                                                                      i]), (0, 0, 255))
         image_adjusted.resize(config.output_image_size, Image.ANTIALIAS).save(
             'test_images/{}_estimates_adjusted.jpg'.format(i))
-
-
-def run_tensorboard():
-    tb = program.TensorBoard()
-    tb.configure(argv=[None, '--logdir=logs'])
-    url = tb.launch()

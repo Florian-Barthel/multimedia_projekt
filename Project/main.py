@@ -84,7 +84,7 @@ with tf.Session() as sess:
     validation_data = dataUtil.get_validation_data(100, config.anchor_grid)
 
 
-    mAPs =  [0.0, 0.0]
+    mAPs = [0.0, 0.0]
     progress_bar_train = tqdm(range(config.iterations))
     for i in progress_bar_train:
         progress_bar_train.set_description('TRAIN | ')
@@ -101,12 +101,10 @@ with tf.Session() as sess:
         '''
 
         if (i + 1) % config.validation_interval == 0:
-            iteration_directory = config.detection_directory + '/' + str(i) + '/'
-            if not os.path.exists(iteration_directory):
-                os.makedirs(iteration_directory)
+            fileUtil.update_directories(i)
 
-            detection_path_normal = iteration_directory + 'detection_normal.txt'
-            detection_path_bbr = iteration_directory + 'detection_bbr.txt'
+            detection_path_normal = config.iteration_directory + 'detection_normal.txt'
+            detection_path_bbr = config.iteration_directory + 'detection_bbr.txt'
             print('\nvalidation...')
             for j in range(len(validation_data)):
                 (test_images, test_labels, gt_annotation_rects, test_paths) = validation_data[j]
@@ -122,7 +120,7 @@ with tf.Session() as sess:
                                                   detection_path_bbr)
             py_mAP_normal = validation.run(
                 detection_file=detection_path_normal,
-                result_file=iteration_directory + 'normal',
+                result_file=config.iteration_directory + 'normal',
                 dataset_dir=config.validation_directory) * 100
             print('mAP static anchor grid:', py_mAP_normal)
 
@@ -131,7 +129,7 @@ with tf.Session() as sess:
             if config.use_bounding_box_regression:
                 py_mAP_bbr = validation.run(
                     detection_file=detection_path_bbr,
-                    result_file=iteration_directory + 'bbr',
+                    result_file=config.iteration_directory + 'bbr',
                     dataset_dir=config.validation_directory) * 100
                 print('mAP bounding box regression:', py_mAP_bbr)
 
@@ -148,4 +146,4 @@ with tf.Session() as sess:
                              gts=gt_annotation_rects,
                              adjusted_anchor_grid=anchor_grid_bbr_output,
                              original_anchor_grid=config.anchor_grid,
-                             path=iteration_directory)
+                             path=config.iteration_directory)

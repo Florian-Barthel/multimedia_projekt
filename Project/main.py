@@ -19,7 +19,7 @@ anchor_grid_tensor = tf.constant(config.anchor_grid, dtype=tf.int32)
 
 train_dataset = dataSet_new.create(config.train_dataset, config.batch_size)
 
-handle = tf.placeholder(tf.string, shape=[])
+handle = tf.placeholder(tf.string, shape=[], name='handle')
 iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
 
 train_iterator = train_dataset.make_one_shot_iterator()
@@ -48,7 +48,7 @@ with tf.Session() as sess:
 
     def optimize(target_loss):
         optimizer = tf.train.AdamOptimizer(learning_rate=config.learning_rate)
-        objective = optimizer.minimize(loss=target_loss, global_step=config.global_step)
+        objective = optimizer.minimize(loss=target_loss, global_step=config.global_step, name='optimize')
         return objective
         
 
@@ -59,13 +59,13 @@ with tf.Session() as sess:
     tf.summary.scalar('1_losses/probabilities', probabilities_loss)
     tf.summary.scalar('1_losses/adjustments', adjustments_loss)
     # py_mAP = 0
-    mAPs_tensor = tf.placeholder(shape=[2], dtype=tf.float32)
+    mAPs_tensor = tf.placeholder(shape=[2], dtype=tf.float32, name='mAPs_tensor')
     tf.summary.scalar('2_mAP/probabilities', mAPs_tensor[0])
     tf.summary.scalar('2_mAP/total', mAPs_tensor[1])
 
     tf.summary.scalar('3_debug/Number of positives', num_predicted)
 
-    merged_summary = tf.summary.merge_all()
+    merged_summary = tf.summary.merge_all(name='merged_summary')
     log_writer = tf.summary.FileWriter(config.logs_directory, sess.graph, flush_secs=1)
     saver = tf.train.Saver()
 

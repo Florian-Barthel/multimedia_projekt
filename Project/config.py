@@ -8,6 +8,9 @@ use_hard_negative_mining = False
 use_bounding_box_regression = True
 use_different_dataset = False
 
+load_model = True
+loaded_model_path = ''
+
 image_width = 320
 image_height = 320
 output_image_size = (720, 720)
@@ -29,7 +32,7 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
 
 batch_size = 16
 iterations = 1000
-validation_interval = 500
+validation_interval = 100
 
 iou = 0.5
 nms_threshold = 0.3
@@ -41,8 +44,9 @@ detection_foreground_threshold = 0.05
 # TensorBoard logs saved in ./logs/dd-MM-yyyy_HH-mm-ss
 current_time = datetime.now()
 logs_directory = './logs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S')
-run_directory = 'runs/' + current_time.strftime('%d-%m-%Y_%H-%M-%S') + '/'
-iteration_directory = run_directory + '/0/'
+runs = './runs/'
+run_directory = runs + current_time.strftime('%d-%m-%Y_%H-%M-%S') + '/'
+iteration_directory = run_directory + '0/'
 model_directory = iteration_directory + 'model/'
 validation_directory = 'dataset_mmp'
 

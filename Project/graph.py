@@ -54,11 +54,11 @@ def probabilities_loss(input_tensor, labels_tensor):
         weights=weights
     )
     regularization_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='probabilities'))
-    total_loss = tf.add(objective_loss, regularization_loss)
+    total_loss = tf.add(objective_loss, regularization_loss, name='total_loss')
 
-    num_labels = tf.reduce_sum(cast_labels[0])
-    num_weights = tf.reduce_sum(weights[0])
-    num_predicted = tf.reduce_sum(tf.argmax(cast_input[0], axis=-1))
+    num_labels = tf.reduce_sum(cast_labels[0], name='num_labels')
+    num_weights = tf.reduce_sum(weights[0], name='num_weights')
+    num_predicted = tf.reduce_sum(tf.argmax(cast_input[0], axis=-1), name='num_predicted')
     return total_loss, num_labels, num_weights, num_predicted
 
 
@@ -129,4 +129,8 @@ def adjustments_loss(adjustments, gts, labels, ag):
 
     regularization_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='adjustments'))
 
-    return tf.cast(regression_loss, tf.float32) + regularization_loss
+    cast_regression_loss = tf.cast(regression_loss, tf.float32)
+
+    adjustments_loss = tf.add(cast_regression_loss, regularization_loss, name='adjustments_loss')
+
+    return adjustments_loss

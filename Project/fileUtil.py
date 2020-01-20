@@ -20,7 +20,7 @@ def run_tensorboard():
 def update_directories(iteration):
     if not os.path.exists(config.run_directory):
         os.makedirs(config.run_directory)
-    config.iteration_directory = config.run_directory + '/' + str(iteration) + '/'
+    config.iteration_directory = config.run_directory + str(iteration) + '/'
     config.model_directory = config.iteration_directory + 'model/'
     if not os.path.exists(config.iteration_directory):
         os.makedirs(config.iteration_directory)
@@ -28,12 +28,31 @@ def update_directories(iteration):
         os.makedirs(config.model_directory)
 
 def save_model(saver, sess):
+    print('Saving model to: ' + config.model_directory)
     saver.save(sess, config.model_directory + 'model')
 
 def load_model(model_path, sess):
+    print('Loading model from: ' + model_path)
     saver = tf.train.import_meta_graph(model_path + "model.meta")
     saver.restore(sess, tf.train.latest_checkpoint(model_path))
     return saver
+
+def get_latest_model_path():
+    runs = os.listdir(config.runs)
+    if not runs:
+        print("No runs found at " + config.runs)
+        exit(-1)
+    run_dates = []
+    for r in runs:
+        run_dates.append(datetime.strptime(r, '%d-%m-%Y_%H-%M-%S'))
+    run_dates.sort(reverse=True)
+    latest_run_path = config.runs + datetime.strftime(run_dates[0], '%d-%m-%Y_%H-%M-%S') + '/'
+    models = os.listdir(latest_run_path)
+    if not models:
+        print("No models found at " + latest_run_path)
+        exit(-1)
+    latest_model_path = latest_run_path + max(models) + '/model/'
+    return latest_model_path
 
 def draw_images(test_images, test_labels, anchor_grid, ag_adjusted_output, probabilities_output):
     if not os.path.exists('test_images'):

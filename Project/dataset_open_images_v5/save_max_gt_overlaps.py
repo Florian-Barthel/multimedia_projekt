@@ -6,9 +6,9 @@ import config
 import numpy as np
 from tqdm import tqdm
 
-# dataset_directory = 'C:/Users/Florian/Desktop/dataset_3_apply_filter'
-dataset_directory = '../dataset_mmp/train'
-anchor_grid_configuration = '[80,100,150]_[0.5,1.0,2.0]_' + dataset_directory.split('/')[-1]
+dataset_directory = 'C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio'
+# dataset_directory = '../dataset_mmp/train'
+anchor_grid_configuration = '[60, 90, 120, 150]_[0.5,1.0,2.0]_' + dataset_directory.split('/')[-1]
 target_directory = '../max_gt_overlaps_objects/'
 
 if not os.path.exists(target_directory):

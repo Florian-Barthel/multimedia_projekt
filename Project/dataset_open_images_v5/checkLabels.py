@@ -1,11 +1,10 @@
 import numpy as np
-import dataUtil
 from PIL import Image
-import shutil
 import os
+import draw
 from annotationRect import AnnotationRect
 
-folder = 'C:/Users/Florian/Desktop/dataset_3_apply_filter'
+folder = 'C:/Users/Florian/Desktop/dataset_1'
 
 
 def __convert_file_annotation_rect(location):
@@ -39,7 +38,6 @@ def get_data(num):
     gt_rects = []
     paths = []
     for path in items:
-
         paths.append(path)
         # Path
         gt_annotation = items.get(path)
@@ -60,9 +58,9 @@ def test_labels(num):
 
     for i in range(num):
         image = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
-        dataUtil.draw_bounding_boxes(image=image,
-                                     annotation_rects=gt_annotation_rects[i],
-                                     color=(100, 100, 255))
+        draw.draw_bounding_boxes(image=image,
+                                 annotation_rects=gt_annotation_rects[i],
+                                 color=(100, 100, 255))
         image.save('test_images/' + str(i) + '_' + paths[i].split('/')[-1].split('.')[0] + '_test_image.jpg')
 
 
@@ -70,8 +68,6 @@ def test_labels(num):
 Number of Images to test
 '''
 test_dir = 'test_images'
-# if os.path.exists(test_dir):
-#     shutil.rmtree(test_dir)
 
 if not os.path.exists(test_dir):
     os.makedirs(test_dir)

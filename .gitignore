@@ -115,3 +115,4 @@ Project/eval_script/detections/*
 Project/dataset_open_images_v5/test_images/*
 Project/runs/*
 Project/dataset
+Project/max_gt_overlaps_objects/

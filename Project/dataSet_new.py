@@ -6,7 +6,7 @@ import config
 from config import image_height, image_width
 import pickle
 
-with open('max_gt_overlaps_objects/' + '[80,100,150]_[0.5,1.0,2.0]_dataset_3_apply_filter_crowd_min.pkl',
+with open('max_gt_overlaps_objects/' + '[60, 90, 120, 150]_[0.5,1.0,2.0]_dataset_2_crowd_min_ratio.pkl',
           'rb') as handle:
     max_gt_overlap_dict = pickle.load(handle)
 

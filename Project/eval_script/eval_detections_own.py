@@ -164,6 +164,31 @@ def run(detection_file, result_file, dataset_dir):
     clsid2name = {0: 'person'}
     clsname2id = {'person': 0}
 
+    print('Loading classmap...')
+    clsid2name = {0: 'person'}
+    clsname2id = {'person': 0}
+
+    print('Loading groundtruth data...')
+    img2gts = fio.load_gts(dataset_dir, 'test')
+    gts_num_images = 0
+    gts_num_instances = 0
+    for gts in img2gts.values():
+        gts_num_images += 1
+        gts_num_instances += len(gts)
+    print('# of images:     {0}'.format(gts_num_images))
+    print('# of detections: {0}'.format(gts_num_instances))
+
+    print('Loading detections...')
+    img2dets = fio.load_detections(detection_file)
+    det_num_images = 0
+    det_num_instances = 0
+    for dets in img2dets.values():
+        det_num_images += 1
+        det_num_instances += len(dets)
+    print('# of images:     {0}'.format(det_num_images))
+    print('# of detections: {0}'.format(det_num_instances))
+
+
     img2gts = fio.load_gts(dataset_dir, 'test')
     gts_num_images = 0
     gts_num_instances = 0

@@ -1,10 +1,11 @@
 import numpy as np
 import dataUtil
 from PIL import Image
+import shutil
 import os
 from annotationRect import AnnotationRect
 
-folder = 'C:/Users/Florian/Desktop/train_v4_filter_crowd_max_5_min_ratio'
+folder = 'C:/Users/Florian/Desktop/dataset_3_apply_filter'
 
 
 def __convert_file_annotation_rect(location):
@@ -36,8 +37,10 @@ def get_data(num):
     items = get_dict_from_folder(num)
     images = []
     gt_rects = []
+    paths = []
     for path in items:
 
+        paths.append(path)
         # Path
         gt_annotation = items.get(path)
         gt_rects.append(gt_annotation)
@@ -48,24 +51,28 @@ def get_data(num):
         img_pad = np.pad(img, pad_width=((0, 320 - h), (0, 320 - w), (0, 0)), mode='constant', constant_values=0)
         img_norm = img_pad.astype(np.float32) / 127.5 - 1
         images.append(img_norm)
-    return np.asarray(images), np.asarray(gt_rects)
+    return np.asarray(images), np.asarray(gt_rects), paths
 
 
 def test_labels(num):
     data = get_data(num * 2)
-    (test_images, gt_annotation_rects) = data
+    (test_images, gt_annotation_rects, paths) = data
 
     for i in range(num):
         image = Image.fromarray(((test_images[i] + 1) * 127.5).astype(np.uint8), 'RGB')
         dataUtil.draw_bounding_boxes(image=image,
                                      annotation_rects=gt_annotation_rects[i],
                                      color=(100, 100, 255))
-        if not os.path.exists('test_images'):
-            os.makedirs('test_images')
-        image.save('test_images/test_image_{}.jpg'.format(i))
+        image.save('test_images/' + str(i) + '_' + paths[i].split('/')[-1].split('.')[0] + '_test_image.jpg')
 
 
 '''
 Number of Images to test
 '''
-test_labels(1000)
+test_dir = 'test_images'
+# if os.path.exists(test_dir):
+#     shutil.rmtree(test_dir)
+
+if not os.path.exists(test_dir):
+    os.makedirs(test_dir)
+test_labels(100)

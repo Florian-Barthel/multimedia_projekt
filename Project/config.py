@@ -29,7 +29,7 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
 
 batch_size = 16
 iterations = 100000
-validation_interval = 500
+validation_interval = 5000
 
 iou = 0.5
 nms_threshold = 0.3

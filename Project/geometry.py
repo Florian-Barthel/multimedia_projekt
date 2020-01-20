@@ -13,7 +13,11 @@ def area_union(rect1, rect2):
 
 
 def iou(rect1, rect2):
-    return area_intersection(rect1, rect2) / area_union(rect1, rect2)
+    union = area_union(rect1, rect2)
+    if union == 0:
+        print('area_union is 0')
+        return 0
+    return area_intersection(rect1, rect2) / union
 
 
 def anchor_max_gt_overlaps(anchor_grid, gts):

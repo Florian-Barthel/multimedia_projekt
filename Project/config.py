@@ -5,12 +5,12 @@ import anchorgrid
 use_decaying_learning_rate = True
 use_augmentation = True
 use_hard_negative_mining = False
-use_bounding_box_regression = False
+use_bounding_box_regression = True
 use_different_dataset = True
 
 image_width = 320
 image_height = 320
-output_image_size = (1280, 1280)
+output_image_size = (720, 720)
 
 crop_factor = 0.1
 augmentation_probability = 0.15
@@ -29,7 +29,7 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
 
 batch_size = 16
 iterations = 100000
-validation_interval = 10000
+validation_interval = 500
 
 iou = 0.5
 nms_threshold = 0.3

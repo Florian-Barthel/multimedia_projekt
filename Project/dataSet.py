@@ -108,11 +108,10 @@ def create(path, batch_size):
         
         return image, bb_images
 
-    def random_flip(image, gts):
+    def random_flip(image, bb_images):
         image = tf.image.flip_left_right(image)
-        width = tf.constant([image_width, 0, image_width, 0], dtype=tf.float32)
-        gts_flipped = tf.abs(width - gts)
-        return image, gts_flipped
+        bb_images = tf.image.flip_left_right(bb_images)
+        return image, bb_images
 
     # TODO: might decrease performance
     def random_quality(image, bb_images):

@@ -58,7 +58,6 @@ with tf.Session() as sess:
         objective = optimizer.minimize(loss=target_loss, global_step=config.global_step)
         return objective
 
-
     optimize = optimize(total_loss)
 
     # Tensorboard config

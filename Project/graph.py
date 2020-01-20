@@ -93,7 +93,7 @@ def adjustments_loss(adjustments, gts, labels, ag):
     mask = tf.cast(tf.reshape(labels, [num_batch_size, num_anchors]), tf.bool)
 
     # why norm backwards
-    gts = tf.cast(gts, tf.float32) * tf.constant([image_height, image_width, image_height, image_width], tf.float32)
+    gts = tf.cast(gts, tf.float32)
     gts = tf.tile(tf.expand_dims(gts, 1), [1, num_anchors, 1, 1])
     gt_sizes = gts[..., 2:4] - gts[..., 0:2]
 
@@ -110,10 +110,8 @@ def adjustments_loss(adjustments, gts, labels, ag):
     adjustments = tf.tile(tf.expand_dims(adjustments, -2), [1, 1, num_max_gts, 1])
     # shape = (batch_size, num_anchors, num_max_gts, 4)
 
-    #adjustments = tf.boolean_mask(adjustments, mask)
-
     offset_targets = (gts[..., 0:2] - ag_batched[..., 0:2]) / anchor_grid_sizes
-    scale_targets = tf.math.log((gt_sizes / anchor_grid_sizes))
+    scale_targets = tf.math.log((gt_sizes / anchor_grid_sizes) + 0.01)
 
     targets = tf.concat([offset_targets, scale_targets], -1)
     # shape = (batch_size, num_anchors, num_max_gts, 4)
@@ -127,12 +125,8 @@ def adjustments_loss(adjustments, gts, labels, ag):
     # shape = (batch_size, num_anchors)
     targets = tf.boolean_mask(differences_closest, mask)
 
-    targets = tf.reduce_min(tf.abs(targets), -2)
-    targets = tf.boolean_mask(targets, mask)
-
     regression_loss = tf.reduce_sum(targets)
 
-    #regression_loss = tf.losses.mean_squared_error(targets, adjustments)
     regularization_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='adjustments'))
 
     return tf.cast(regression_loss, tf.float32) + regularization_loss

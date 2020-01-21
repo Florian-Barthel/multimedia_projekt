@@ -61,12 +61,13 @@ if use_different_dataset:
     # train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd"
     # train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd_min"
     # train_dataset = "C:/Users/Florian/Desktop/dataset_2"
-    train_dataset = "C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio"
+    # train_dataset = "C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio"
 
     # Server
     # train_dataset = "../datasets/dataset_3_apply_filter"
     # train_dataset = "../datasets/dataset_3_apply_filter_crowd"
     # train_dataset = "../datasets/dataset_3_apply_filter_crowd_min"
+    train_dataset = "../datasets/dataset_2_crowd_min_ratio_flipped"
 else:
     train_dataset = 'dataset_mmp'
 

@@ -6,8 +6,8 @@ import config
 import numpy as np
 from tqdm import tqdm
 
-dataset_directory = 'C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio'
-# dataset_directory = '../dataset_mmp/train'
+# dataset_directory = 'C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio'
+dataset_directory = '../../datasets/dataset_2_crowd_min_ratio_flipped'
 anchor_grid_configuration = '[60, 90, 120, 150]_[0.5,1.0,2.0]_' + dataset_directory.split('/')[-1]
 target_directory = '../max_gt_overlaps_objects/'
 
@@ -51,8 +51,6 @@ max_gt_overlaps_dict = {}
 
 for image_name, gts in tqdm(data.items()):
     max_gt_overlaps_dict[image_name] = get_label_grid(gts)
-
-# print(max_gt_overlaps_dict)
 
 
 with open(target_directory + anchor_grid_configuration + '.pkl', 'wb') as handle:

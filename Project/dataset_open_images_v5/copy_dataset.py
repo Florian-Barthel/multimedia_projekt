@@ -8,12 +8,12 @@ Filter all boxes with greater width than height
 '''
 
 
-src_folder = 'dataset_mmp/train'
-dest_folder = '../datasets/dataset_mmp/train'
+src_folder = '../datasets/dataset_2_crowd_min_ratio'
+dest_folder = '../datasets/dataset_2_crowd_min_ratio_flipped'
 
 
-if not os.path.exists(dest_folder):
-    os.makedirs(dest_folder)
+# if not os.path.exists(dest_folder):
+# #     os.makedirs(dest_folder)
 
 
 num_kept = 0

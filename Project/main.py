@@ -27,11 +27,11 @@ train_dataset = dataSet_new.create(config.train_dataset, config.batch_size)
 handle = tf.placeholder(tf.string, shape=[])
 iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
 train_iterator = train_dataset.make_one_shot_iterator()
-next_element = iterator.get_next()
+batch_elements = iterator.get_next()
 
 with tf.Session() as sess:
     train_handle = sess.run(train_iterator.string_handle())
-    images_tensor, gt_tensor, labels_tensor = next_element
+    images_tensor, gt_tensor, labels_tensor = batch_elements
 
     '''
     BUILD GRAPH
@@ -47,9 +47,12 @@ with tf.Session() as sess:
         adjustments = graph.adjustments_output(features)
 
     probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(probabilities, labels_tensor)
-    adjustments_loss = graph.adjustments_loss(adjustments, gt_tensor, labels_tensor, anchor_grid_tensor)
 
-    anchor_grid_adjusted = dataUtil.calculate_adjusted_anchor_grid(anchor_grid_tensor, adjustments)
+    num_batch_size = tf.shape(adjustments)[0]
+    ag_batched = tf.cast(tf.tile(tf.expand_dims(anchor_grid_tensor, 0), [num_batch_size, 1, 1, 1, 1, 1]), tf.float32)
+    adjustments_loss = graph.adjustments_loss(adjustments, gt_tensor, labels_tensor, ag_batched)
+
+    anchor_grid_adjusted = dataUtil.calculate_adjusted_anchor_grid(ag_batched, adjustments)
 
     if config.use_bounding_box_regression:
         total_loss = probabilities_loss * adjustments_loss
@@ -105,10 +108,17 @@ with tf.Session() as sess:
         TRAINING
         '''
         progress_bar_train.set_description('TRAIN | ')
-        loss, labels, weights, predicted, _, summary = sess.run(
-            [[total_loss, probabilities_loss, adjustments_loss], num_labels, num_weights, num_predicted, optimize,
-             merged_summary],
-            feed_dict={handle: train_handle, mAPs_tensor: mAPs})
+        _, summary, batch_elements_output, ag_adjusted_output = sess.run([optimize, 
+                                                                   merged_summary, 
+                                                                   batch_elements,
+                                                                   anchor_grid_adjusted], 
+                                                                   feed_dict={handle: train_handle, mAPs_tensor: mAPs})
+
+
+
+
+
+
         if i % 20 == 0:
             log_writer.add_summary(summary, i)
 

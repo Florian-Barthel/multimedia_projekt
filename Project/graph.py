@@ -84,7 +84,7 @@ def adjustments_output(features):
                                                 4])
 
 
-def adjustments_loss(adjustments, gts, labels, ag):
+def adjustments_loss(adjustments, gts, labels, ag_batched):
     num_batch_size = tf.shape(adjustments)[0]
     num_anchors = tf.reduce_prod(tf.shape(adjustments)[1:5])
     num_max_gts = tf.shape(gts)[1]
@@ -93,7 +93,6 @@ def adjustments_loss(adjustments, gts, labels, ag):
     gts = tf.tile(tf.expand_dims(gts, 1), [1, num_anchors, 1, 1])
     gt_sizes = gts[..., 2:4] - gts[..., 0:2]
 
-    ag_batched = tf.cast(tf.tile(tf.expand_dims(ag, 0), [num_batch_size, 1, 1, 1, 1, 1]), tf.float32)
     ag_batched = tf.reshape(ag_batched, [num_batch_size, num_anchors, 4])
     ag_batched = tf.tile(tf.expand_dims(ag_batched, -2), [1, 1, num_max_gts, 1])
 
@@ -107,20 +106,7 @@ def adjustments_loss(adjustments, gts, labels, ag):
 
     targets = tf.concat([offset_targets, scale_targets], -1)
 
-    # targets = tf.where(tf.math.is_nan(targets),
-    # tf.fill(tf.shape(targets), tf.constant(float("Inf"), tf.float32)),
-    # targets)
-    '''
-    Replaced for easier debugging
-    '''
-    targets_xy1 = tf.where(tf.math.is_nan(targets[..., 0:2]),
-                           tf.fill(tf.shape(targets[..., 0:2]), tf.constant(-10000, tf.float32)),
-                           targets[..., 0:2])
-    targets_xy2 = tf.where(tf.math.is_nan(targets[..., 2:4]),
-                           tf.fill(tf.shape(targets[..., 2:4]), tf.constant(10000, tf.float32)),
-                           targets[..., 2:4])
-
-    targets = tf.concat([targets_xy1, targets_xy2], axis=-1)
+    targets = tf.where(tf.math.is_nan(targets), tf.fill(tf.shape(targets), tf.constant(float("Inf"), tf.float32)), targets)
 
     differences = tf.abs(targets - adjustments)
     differences_summed = tf.reduce_sum(differences, -1)

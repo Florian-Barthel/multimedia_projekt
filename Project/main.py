@@ -38,14 +38,15 @@ with tf.Session() as sess:
 
     adjustments = graph.adjustments_output(features)
     adjustments_loss = graph.adjustments_loss(adjustments, gt_tensor, labels_tensor, anchor_grid_tensor)
-    adjustments_loss = tf.identity(adjustments_loss, name='adjustments_loss')
     anchor_grid_adjusted = dataUtil.calculate_adjusted_anchor_grid(anchor_grid_tensor, adjustments)
 
     if config.use_bounding_box_regression:
         total_loss = probabilities_loss * adjustments_loss
     else:
         total_loss = probabilities_loss
-
+    probabilities_loss = tf.identity(probabilities_loss, name='probabilities_loss')
+    adjustments_loss = tf.identity(adjustments_loss, name='adjustments_loss')
+    total_loss = tf.identity(total_loss, name='total_loss')
 
     def optimize(target_loss):
         optimizer = tf.train.AdamOptimizer(learning_rate=config.learning_rate)

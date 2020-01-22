@@ -51,7 +51,8 @@ def get_latest_model_path():
     if not models:
         print("No models found at " + latest_run_path)
         exit(-1)
-    latest_model_path = latest_run_path + max(models) + '/model/'
+    models_i = [int(i) for i in models]
+    latest_model_path = latest_run_path + str(max(models_i)) + '/model/'
     return latest_model_path
 
 def draw_images(test_images, test_labels, anchor_grid, ag_adjusted_output, probabilities_output):

@@ -38,7 +38,7 @@ if __name__ == '__main__':
             print(tensor.name)
 
         total_loss = graph.get_tensor_by_name('total_loss:0')
-        #probabilities_loss = graph.get_tensor_by_name('probabilities_loss:0')
+        probabilities_loss = graph.get_tensor_by_name('probabilities_loss:0')
         adjustments_loss = graph.get_tensor_by_name('adjustments_loss:0')
         num_labels = graph.get_tensor_by_name('num_labels:0')
         num_weights = graph.get_tensor_by_name('num_weights:0')
@@ -50,22 +50,22 @@ if __name__ == '__main__':
         probabilities = graph.get_tensor_by_name('probabilities/probabilities:0')
         anchor_grid_adjusted = graph.get_tensor_by_name('anchor_grid_adjusted:0')
 
-
         train_dataset = dataSet_new.create(config.train_dataset, config.batch_size)
-        train_iterator = train_dataset.make_one_shot_iterator()
         iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
+        train_iterator = train_dataset.make_one_shot_iterator()
         next_element = iterator.get_next()
         train_handle = sess.run(train_iterator.string_handle())
         images_tensor, gt_tensor, labels_tensor = next_element
 
         log_writer = tf.summary.FileWriter(config.logs_directory, sess.graph, flush_secs=1)
-        validation_data = dataUtil.get_validation_data(100, config.anchor_grid)
+
+        validation_data = dataUtil.get_validation_data(config.batch_size, config.anchor_grid)
         mAPs = [0.0, 0.0]
         progress_bar_train = tqdm(range(config.train_iterations))
         for i in progress_bar_train:
             progress_bar_train.set_description('TRAIN | ')
             loss, labels, weights, predicted, _, summary = sess.run(
-                [[total_loss, total_loss, adjustments_loss], num_labels, num_weights, num_predicted, optimize,
+                [[total_loss, probabilities_loss, adjustments_loss], num_labels, num_weights, num_predicted, optimize,
                  merged_summary],
                 feed_dict={handle: train_handle, mAPs_tensor: mAPs})
             if i % 10 == 0:
@@ -84,8 +84,8 @@ if __name__ == '__main__':
                                                                                        labels_tensor: test_labels,
                                                                                        mAPs_tensor: mAPs,
                                                                                        handle: train_handle})
-
-                    evaluation.prepare_detections(probabilities_output, config.anchor_grid, test_paths, detection_path_normal)
+                    evaluation.prepare_detections(probabilities_output, config.anchor_grid, test_paths,
+                                                  detection_path_normal)
 
                     if config.use_bounding_box_regression:
                         evaluation.prepare_detections(probabilities_output, anchor_grid_bbr_output, test_paths,
@@ -104,12 +104,9 @@ if __name__ == '__main__':
                         result_file=config.iteration_directory + 'bbr',
                         dataset_dir=config.validation_directory) * 100
                     print('mAP bounding box regression:', py_mAP_bbr)
+                    mAPs[1] = py_mAP_bbr
 
-                mAPs[1] = py_mAP_bbr
                 fileUtil.save_model(saver, sess)
-
-                # str_summary = sess.run(merged_summary, feed_dict={mAP: str(py_mAP)})
-                # log_writer.add_summary(str_summary, i)
 
                 draw.draw_images(num_images=5,
                                  images=test_images,
@@ -119,4 +116,5 @@ if __name__ == '__main__':
                                  adjusted_anchor_grid=anchor_grid_bbr_output,
                                  original_anchor_grid=config.anchor_grid,
                                  path=config.iteration_directory)
+
         fileUtil.save_model(saver=saver, sess=sess)

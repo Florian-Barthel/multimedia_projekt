@@ -54,7 +54,7 @@ def probabilities_loss(input_tensor, labels_tensor):
         weights=weights
     )
     regularization_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='probabilities'))
-    total_loss = tf.add(objective_loss, regularization_loss, name='total_loss')
+    total_loss = tf.add(objective_loss, regularization_loss)
 
     num_labels = tf.reduce_sum(cast_labels[0], name='num_labels')
     num_weights = tf.reduce_sum(weights[0], name='num_weights')

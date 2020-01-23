@@ -59,7 +59,6 @@ with open('C:/Users/Florian/Desktop/train-annotations-bbox.csv') as csv_file:
             file.close()
 
 
-# print(images_to_remove)
 print(len(images_to_remove))
 
 

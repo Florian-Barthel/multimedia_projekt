@@ -4,12 +4,15 @@ import anchorgrid
 
 use_decaying_learning_rate = True
 use_augmentation = True
-use_hard_negative_mining = False
+use_hard_negative_mining = True
 use_bounding_box_regression = True
 use_different_dataset = False
 
 load_model = True
 loaded_model_path = ''
+use_two_mobile_nets = False
+
+using_linux = False
 
 image_width = 320
 image_height = 320
@@ -20,7 +23,7 @@ augmentation_probability = 0.15
 
 f_map_rows = 10
 f_map_cols = 10
-scales = [80, 100, 150]
+scales = [60, 90, 120, 150]
 aspect_ratios = [0.5, 1.0, 2.0]
 scale_factor = 32.0
 
@@ -31,7 +34,7 @@ anchor_grid = anchorgrid.anchor_grid(f_map_rows=f_map_rows,
                                      aspect_ratios=aspect_ratios)
 
 batch_size = 16
-iterations = 5000
+iterations = 1000
 validation_interval = 500
 
 train_iterations = 1000
@@ -65,10 +68,13 @@ if use_different_dataset:
     # train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter"
     # train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd"
     # train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd_min"
+    # train_dataset = "C:/Users/Florian/Desktop/dataset_2"
+    #train_dataset = "C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio"
 
     # Server
     # train_dataset = "../datasets/dataset_3_apply_filter"
     # train_dataset = "../datasets/dataset_3_apply_filter_crowd"
+    # train_dataset = "../datasets/dataset_3_apply_filter_crowd_min"
     train_dataset = "../datasets/dataset_3_apply_filter_crowd_min"
 else:
     train_dataset = 'dataset_mmp'

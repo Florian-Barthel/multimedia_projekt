@@ -1,6 +1,5 @@
 import tensorflow as tf
 import config
-from dataSet import image_height, image_width
 
 
 def probabilities_output(features):
@@ -36,7 +35,6 @@ def probabilities_loss(input_tensor, labels_tensor):
             reduction=tf.losses.Reduction.NONE
         )
     else:
-        # make random weights
         weights = tf.random.uniform(
             tf.shape(labels_tensor),
             dtype=tf.dtypes.float32
@@ -73,6 +71,7 @@ def adjustments_output(features):
                                                padding='same',
                                                activation=None,
                                                kernel_initializer=tf.constant_initializer(0.0),
+                                               # kernel_initializer=tf.truncated_normal_initializer(),
                                                kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005),
                                                bias_initializer=tf.constant_initializer(0.0),
                                                bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005))
@@ -85,48 +84,38 @@ def adjustments_output(features):
                                                 4])
 
 
-def adjustments_loss(adjustments, gts, labels, ag):
+def adjustments_loss(adjustments, gts, labels, ag_batched):
     num_batch_size = tf.shape(adjustments)[0]
     num_anchors = tf.reduce_prod(tf.shape(adjustments)[1:5])
     num_max_gts = tf.shape(gts)[1]
 
-    mask = tf.cast(tf.reshape(labels, [num_batch_size, num_anchors]), tf.bool)
-
-    # why norm backwards
     gts = tf.cast(gts, tf.float32)
     gts = tf.tile(tf.expand_dims(gts, 1), [1, num_anchors, 1, 1])
     gt_sizes = gts[..., 2:4] - gts[..., 0:2]
 
-    # anchor grid auf batch_size multiplizieren
-    ag_batched = tf.cast(tf.tile(tf.expand_dims(ag, 0), [num_batch_size, 1, 1, 1, 1, 1]), tf.float32)
     ag_batched = tf.reshape(ag_batched, [num_batch_size, num_anchors, 4])
     ag_batched = tf.tile(tf.expand_dims(ag_batched, -2), [1, 1, num_max_gts, 1])
-    # shape = (batch_size, num_anchors, num_max_gts, 4)
 
     anchor_grid_sizes = ag_batched[..., 2:4] - ag_batched[..., 0:2]
-    # shape = (batch_size, num_anchors, num_max_gts, 2)
 
     adjustments = tf.reshape(adjustments, [num_batch_size, num_anchors, 4])
     adjustments = tf.tile(tf.expand_dims(adjustments, -2), [1, 1, num_max_gts, 1])
-    # shape = (batch_size, num_anchors, num_max_gts, 4)
 
     offset_targets = (gts[..., 0:2] - ag_batched[..., 0:2]) / anchor_grid_sizes
     scale_targets = tf.math.log((gt_sizes / anchor_grid_sizes) + 0.01)
 
     targets = tf.concat([offset_targets, scale_targets], -1)
-    # shape = (batch_size, num_anchors, num_max_gts, 4)
 
     targets = tf.where(tf.math.is_nan(targets), tf.fill(tf.shape(targets), tf.constant(float("Inf"), tf.float32)), targets)
 
     differences = tf.abs(targets - adjustments)
     differences_summed = tf.reduce_sum(differences, -1)
-    # shape = (batch_size, num_anchors, num_max_gts)
     differences_closest = tf.reduce_min(differences_summed, -1)
-    # shape = (batch_size, num_anchors)
+
+    mask = tf.cast(tf.reshape(labels, [num_batch_size, num_anchors]), tf.bool)
     targets = tf.boolean_mask(differences_closest, mask)
 
     regression_loss = tf.reduce_sum(targets)
-
     regularization_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='adjustments'))
 
     return tf.cast(regression_loss, tf.float32) + regularization_loss

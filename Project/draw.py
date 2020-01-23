@@ -1,4 +1,3 @@
-import dataUtil
 from PIL import ImageDraw, Image
 import config
 import os
@@ -7,31 +6,45 @@ import evaluation
 from annotationRect import AnnotationRect
 
 
-def __convert_to_annotation_rects_label(anchor_grid, labels):
+def convert_to_annotation_rects_label(anchor_grid, labels):
     indices = np.where(labels == 1)[:4]
     max_boxes = anchor_grid[indices]
     annotated_boxes = [AnnotationRect(*max_boxes[i]) for i in range(len(max_boxes))]
     return annotated_boxes
 
 
-def __draw_bounding_boxes(image, annotation_rects, color):
+def draw_bounding_boxes(image, annotation_rects, color):
     for rect in annotation_rects:
         draw = ImageDraw.Draw(image)
-        draw.rectangle(
-            xy=[rect.x1, rect.y1, rect.x2, rect.y2],
-            outline=color
-        )
+        if config.using_linux:
+            draw.rectangle(
+                xy=[rect.x1, rect.y1, rect.x2, rect.y2],
+                outline=color
+            )
+        else:
+            draw.rectangle(
+                xy=[rect.x1, rect.y1, rect.x2, rect.y2],
+                outline=color,
+                width=3
+            )
     return image
 
 
-def __draw_labels(image, anchor_grid, labels, color):
-    annotation_rects = __convert_to_annotation_rects_label(anchor_grid, labels)
+def draw_labels(image, anchor_grid, labels, color):
+    annotation_rects = convert_to_annotation_rects_label(anchor_grid, labels)
     for rect in annotation_rects:
         draw = ImageDraw.Draw(image)
-        draw.rectangle(
-            xy=[rect.x1, rect.y1, rect.x2, rect.y2],
-            outline=color
-        )
+        if config.using_linux:
+            draw.rectangle(
+                xy=[rect.x1, rect.y1, rect.x2, rect.y2],
+                outline=color
+            )
+        else:
+            draw.rectangle(
+                xy=[rect.x1, rect.y1, rect.x2, rect.y2],
+                outline=color,
+                width=3
+            )
     return image
 
 
@@ -51,11 +64,11 @@ def draw_images(num_images, images, output, labels, gts, adjusted_anchor_grid, o
         boxes = list(nms.keys())
 
         image = Image.fromarray(((images[k] + 1) * 127.5).astype(np.uint8), 'RGB')
-        __draw_bounding_boxes(image, gts[k], (255, 0, 0))
-        __draw_labels(image, original_anchor_grid, labels[k], (0, 255, 255))
+        draw_bounding_boxes(image, gts[k], (255, 0, 0))
+        draw_labels(image, original_anchor_grid, labels[k], (0, 255, 255))
         image.resize(config.output_image_size, Image.ANTIALIAS).save(path + '{}_labels.jpg'.format(k))
 
-        __draw_bounding_boxes(image, boxes, (0, 0, 255))
+        draw_bounding_boxes(image, boxes, (0, 0, 255))
         image.resize(config.output_image_size, Image.ANTIALIAS).save(path + '{}_estimates.jpg'.format(k))
 
         '''
@@ -67,9 +80,9 @@ def draw_images(num_images, images, output, labels, gts, adjusted_anchor_grid, o
             boxes_bbr = list(nms_bbr.keys())
 
             image_adjusted = Image.fromarray(((images[k] + 1) * 127.5).astype(np.uint8), 'RGB')
-            __draw_bounding_boxes(image_adjusted, gts[k], (255, 0, 0))
-            __draw_labels(image_adjusted, adjusted_anchor_grid[k], labels[k], (0, 255, 255))
+            draw_bounding_boxes(image_adjusted, gts[k], (255, 0, 0))
+            draw_labels(image_adjusted, adjusted_anchor_grid[k], labels[k], (0, 255, 255))
             image_adjusted.resize(config.output_image_size, Image.ANTIALIAS).save(path + '{}_labels_bbr.jpg'.format(k))
 
-            __draw_bounding_boxes(image_adjusted, boxes_bbr, (0, 0, 255))
+            draw_bounding_boxes(image_adjusted, boxes_bbr, (0, 0, 255))
             image_adjusted.resize(config.output_image_size, Image.ANTIALIAS).save(path + '{}_estimates_bbr.jpg'.format(k))

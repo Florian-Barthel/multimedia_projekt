@@ -70,9 +70,8 @@ def get_validation_data(package_size, anchor_grid):
     return result
 
 
-def calculate_adjusted_anchor_grid(anchor_grid, adjustments):
+def calculate_adjusted_anchor_grid(ag_batched, adjustments):
     num_batch_size = tf.shape(adjustments)[0]
-    ag_batched = tf.cast(tf.tile(tf.expand_dims(anchor_grid, 0), [num_batch_size, 1, 1, 1, 1, 1]), tf.float32)
 
     # Inverted regression targets
     ag_sizes = ag_batched[..., 2:4] - ag_batched[..., 0:2]

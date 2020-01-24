@@ -36,13 +36,15 @@ if __name__ == '__main__':
         graph = tf.get_default_graph()
         for tensor in graph.get_operations():
             print(tensor.name)
+        for tensor in graph.get_collection('optimize:0'):
+            print(tensor)
 
-        total_loss = graph.get_tensor_by_name('total_loss:0')
-        probabilities_loss = graph.get_tensor_by_name('probabilities_loss:0')
-        adjustments_loss = graph.get_tensor_by_name('adjustments_loss:0')
-        num_labels = graph.get_tensor_by_name('num_labels:0')
-        num_weights = graph.get_tensor_by_name('num_weights:0')
-        num_predicted = graph.get_tensor_by_name('num_predicted:0')
+        #total_loss = graph.get_tensor_by_name('total_loss:0')
+        #probabilities_loss = graph.get_tensor_by_name('probabilities_loss:0')
+        #adjustments_loss = graph.get_tensor_by_name('adjustments_loss:0')
+        #num_labels = graph.get_tensor_by_name('num_labels:0')
+        #num_weights = graph.get_tensor_by_name('num_weights:0')
+        #num_predicted = graph.get_tensor_by_name('num_predicted:0')
         optimize = graph.get_tensor_by_name('optimize:0')
         merged_summary = graph.get_tensor_by_name('merged_summary/merged_summary:0')
         handle = graph.get_tensor_by_name('handle:0')
@@ -53,9 +55,21 @@ if __name__ == '__main__':
         train_dataset = dataSet_new.create(config.train_dataset, config.batch_size)
         iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_types, train_dataset.output_shapes)
         train_iterator = train_dataset.make_one_shot_iterator()
-        next_element = iterator.get_next()
+        batch_elements = iterator.get_next()
         train_handle = sess.run(train_iterator.string_handle())
-        images_tensor, gt_tensor, labels_tensor = next_element
+        images_tensor, gt_tensor, labels_tensor = batch_elements
+
+        graph_vars = tf.compat.v1.global_variables()
+        progress_bar_init = tqdm(graph_vars)
+        progress_bar_init.set_description('INIT  | ')
+        vars_to_init = []
+        for var in progress_bar_init:
+            try:
+                sess.run(var)
+            except:
+                vars_to_init.append(var)
+
+        sess.run(tf.compat.v1.variables_initializer(vars_to_init))
 
         log_writer = tf.summary.FileWriter(config.logs_directory, sess.graph, flush_secs=1)
 
@@ -63,13 +77,23 @@ if __name__ == '__main__':
         mAPs = [0.0, 0.0]
         progress_bar_train = tqdm(range(config.train_iterations))
         for i in progress_bar_train:
+            '''
+            TRAINING
+            '''
             progress_bar_train.set_description('TRAIN | ')
-            loss, labels, weights, predicted, _, summary = sess.run(
-                [[total_loss, probabilities_loss, adjustments_loss], num_labels, num_weights, num_predicted, optimize,
-                 merged_summary],
-                feed_dict={handle: train_handle, mAPs_tensor: mAPs})
-            if i % 10 == 0:
+            _, summary, batch_elements_output, ag_adjusted_output = sess.run([optimize,
+                                                                              merged_summary,
+                                                                              batch_elements,
+                                                                              anchor_grid_adjusted],
+                                                                             feed_dict={handle: train_handle,
+                                                                                        mAPs_tensor: mAPs})
+
+            if i % 20 == 0:
                 log_writer.add_summary(summary, i)
+
+            '''
+            VALIDATION
+            '''
 
             if (i + 1) % config.validation_interval == 0:
                 fileUtil.update_directories(i)
@@ -95,7 +119,6 @@ if __name__ == '__main__':
                     result_file=config.iteration_directory + 'normal',
                     dataset_dir=config.validation_directory) * 100
                 print('mAP static anchor grid:', py_mAP_normal)
-
                 mAPs[0] = py_mAP_normal
 
                 if config.use_bounding_box_regression:
@@ -105,6 +128,16 @@ if __name__ == '__main__':
                         dataset_dir=config.validation_directory) * 100
                     print('mAP bounding box regression:', py_mAP_bbr)
                     mAPs[1] = py_mAP_bbr
+                fileUtil.save_model(saver, sess)
+
+                draw.draw_images(num_images=5,
+                                 images=test_images,
+                                 output=probabilities_output,
+                                 labels=test_labels,
+                                 gts=gt_annotation_rects,
+                                 adjusted_anchor_grid=anchor_grid_bbr_output,
+                                 original_anchor_grid=config.anchor_grid,
+                                 path=config.iteration_directory)
 
                 fileUtil.save_model(saver, sess)
 
@@ -117,4 +150,4 @@ if __name__ == '__main__':
                                  original_anchor_grid=config.anchor_grid,
                                  path=config.iteration_directory)
 
-        fileUtil.save_model(saver=saver, sess=sess)
+        #fileUtil.save_model(saver=saver, sess=sess)

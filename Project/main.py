@@ -26,6 +26,8 @@ iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_type
 train_iterator = train_dataset.make_one_shot_iterator()
 batch_elements = iterator.get_next()
 
+saver = tf.train.Saver()
+
 with tf.Session() as sess:
     train_handle = sess.run(train_iterator.string_handle())
     images_tensor, gt_tensor, labels_tensor = batch_elements
@@ -82,7 +84,6 @@ with tf.Session() as sess:
 
     merged_summary = tf.summary.merge_all(name='merged_summary')
     log_writer = tf.summary.FileWriter(config.logs_directory, sess.graph, flush_secs=1)
-    saver = tf.train.Saver()
 
     '''
     INITIALIZE VARS

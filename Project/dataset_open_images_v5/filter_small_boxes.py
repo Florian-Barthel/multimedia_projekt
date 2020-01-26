@@ -1,4 +1,3 @@
-# TODO: Remove all Images with too small bounding boxes
 from tqdm import tqdm
 import shutil
 import os

@@ -12,14 +12,16 @@ def probabilities_output(features):
                                                activation=None,
                                                kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005),
                                                kernel_initializer=tf.truncated_normal_initializer(),
-                                               bias_initializer=tf.constant_initializer(0.0))
+                                               bias_initializer=tf.constant_initializer(0.0),
+                                               name='probabilities_conv2d')
 
         probabilities = tf.reshape(features_convoluted, [tf.shape(features_convoluted)[0],
                                                          config.f_map_rows,
                                                          config.f_map_cols,
                                                          len(config.scales),
                                                          len(config.aspect_ratios),
-                                                         2])
+                                                         2],
+                                   name='probabilities_reshape')
 
         return probabilities
 
@@ -71,17 +73,18 @@ def adjustments_output(features):
                                                padding='same',
                                                activation=None,
                                                kernel_initializer=tf.constant_initializer(0.0),
-                                               # kernel_initializer=tf.truncated_normal_initializer(),
                                                kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005),
                                                bias_initializer=tf.constant_initializer(0.0),
-                                               bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005))
+                                               bias_regularizer=tf.contrib.layers.l2_regularizer(scale=0.0005),
+                                               name='adjustments_conv2d')
 
         return tf.reshape(features_convoluted, [num_batch_size,
                                                 config.f_map_rows,
                                                 config.f_map_cols,
                                                 len(config.scales),
                                                 len(config.aspect_ratios),
-                                                4])
+                                                4],
+                          name='adjustments_reshape')
 
 
 def adjustments_loss(adjustments, gts, labels, ag):
@@ -107,12 +110,6 @@ def adjustments_loss(adjustments, gts, labels, ag):
 
     targets = tf.concat([offset_targets, scale_targets], -1)
 
-    # targets = tf.where(tf.math.is_nan(targets),
-    # tf.fill(tf.shape(targets), tf.constant(float("Inf"), tf.float32)),
-    # targets)
-    '''
-    Replaced for easier debugging
-    '''
     targets_xy1 = tf.where(tf.math.is_nan(targets[..., 0:2]),
                            tf.fill(tf.shape(targets[..., 0:2]), tf.constant(-10000, tf.float32)),
                            targets[..., 0:2])

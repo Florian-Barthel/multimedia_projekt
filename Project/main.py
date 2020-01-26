@@ -29,6 +29,7 @@ iterator = tf.data.Iterator.from_string_handle(handle, train_dataset.output_type
 train_iterator = train_dataset.make_one_shot_iterator()
 next_element = iterator.get_next()
 
+
 with tf.Session() as sess:
     train_handle = sess.run(train_iterator.string_handle())
     images_tensor, gt_tensor, labels_tensor = next_element
@@ -36,15 +37,9 @@ with tf.Session() as sess:
     '''
     BUILD GRAPH
     '''
-    if config.use_two_mobile_nets:
-        features_probabilities = mobilenet.mobile_net_v2()(images_tensor, training=False)
-        features_adjustments = mobilenet.mobile_net_v2()(images_tensor, training=False)
-        probabilities = graph.probabilities_output(features_probabilities)
-        adjustments = graph.adjustments_output(features_adjustments)
-    else:
-        features = mobilenet.mobile_net_v2()(images_tensor, training=False)
-        probabilities = graph.probabilities_output(features)
-        adjustments = graph.adjustments_output(features)
+    features = mobilenet.mobile_net_v2()(images_tensor, training=False)
+    probabilities = graph.probabilities_output(features)
+    adjustments = graph.adjustments_output(features)
 
     probabilities_loss, num_labels, num_weights, num_predicted = graph.probabilities_loss(probabilities, labels_tensor)
     adjustments_loss = graph.adjustments_loss(adjustments, gt_tensor, labels_tensor, anchor_grid_tensor)
@@ -52,17 +47,23 @@ with tf.Session() as sess:
     anchor_grid_adjusted = dataUtil.calculate_adjusted_anchor_grid(anchor_grid_tensor, adjustments)
 
     if config.use_bounding_box_regression:
-        total_loss = probabilities_loss * adjustments_loss
+        # TODO: Change back
+        total_loss = probabilities_loss + adjustments_loss
     else:
         total_loss = probabilities_loss
 
 
     def optimize(target_loss):
-        optimizer = tf.train.AdamOptimizer(learning_rate=config.learning_rate)
-        objective = optimizer.minimize(loss=target_loss, global_step=config.global_step)
+        if config.use_adam_optimizer:
+            optimizer = tf.train.AdamOptimizer(learning_rate=config.learning_rate)
+            objective = optimizer.minimize(loss=target_loss, global_step=config.global_step)
+        else:
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate=config.learning_rate)
+            objective = optimizer.minimize(loss=target_loss)
         return objective
 
 
+    saver = tf.compat.v1.train.Saver(max_to_keep=None)
     optimize = optimize(total_loss)
 
     '''
@@ -160,4 +161,8 @@ with tf.Session() as sess:
                              adjusted_anchor_grid=anchor_grid_bbr_output,
                              original_anchor_grid=config.anchor_grid,
                              path=iteration_directory)
-            # TODO: Save model
+            '''
+            Save Model
+            '''
+
+            saver.save(sess, iteration_directory + 'model', global_step=i)

@@ -4,7 +4,8 @@ import os
 import draw
 from annotationRect import AnnotationRect
 
-folder = '../../datasets/dataset_2_crowd_min_ratio_flipped'
+# folder = '../../datasets/dataset_2_crowd_min_ratio_flipped'
+folder = 'C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio_flipped'
 
 
 def __convert_file_annotation_rect(location):

@@ -30,14 +30,13 @@ def non_maximum_suppression(boxes):
 
 
 # Creating dict of boxes AnnotationRect:Score from the output and the anchor grid
-def create_boxes_dict(data, anchor_grid, foreground_threshold=0.0001):
+def create_boxes_dict(data, anchor_grid, foreground_threshold):
     boxes_dict = {}
     calc_softmax = softmax(data, axis=-1)
     foreground = np.delete(calc_softmax, [0], axis=-1)
     indices = np.where(foreground > foreground_threshold)[:4]
     scores = foreground[indices]
     max_boxes = anchor_grid[indices]
-    # boxes = [AnnotationRect(*max_boxes[i]) for i in range(max_boxes.shape[0])]
     for i in range(len(scores)):
         boxes_dict[AnnotationRect(*max_boxes[i])] = scores[i, 0]
     return boxes_dict
@@ -59,7 +58,7 @@ def save_boxes(boxes, image_path, detection_file):
 
 # Prepares detections from the output and anchor_grid applying non-maximum-suppression
 # and saving the resulting detections to disk
-def prepare_detections(output, anchor_grid, image_paths, detection_file):
+def prepare_detections(output, anchor_grid, image_paths, detection_file, fg_threshold=config.fg_threshold):
     for i in range(len(image_paths)):
 
         # check if anchor_grid is static or from bbr
@@ -67,6 +66,6 @@ def prepare_detections(output, anchor_grid, image_paths, detection_file):
             ag = anchor_grid[i]
         else:
             ag = anchor_grid
-        boxes_dict = create_boxes_dict(output[i], ag)
+        boxes_dict = create_boxes_dict(output[i], ag, fg_threshold)
         nms = non_maximum_suppression(boxes_dict)
         save_boxes(nms, image_paths[i], detection_file)

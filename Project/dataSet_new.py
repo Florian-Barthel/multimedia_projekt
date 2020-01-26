@@ -6,7 +6,11 @@ import config
 from config import image_height, image_width
 import pickle
 
-with open('max_gt_overlaps_objects/' + '[60, 90, 120, 150]_[0.5,1.0,2.0]_dataset_2_crowd_min_ratio_flipped.pkl',
+# with open('max_gt_overlaps_objects/' + '[60, 90, 120, 150]_[0.5,1.0,2.0]_dataset_2_crowd_min.pkl',
+#           'rb') as handle:
+#     max_gt_overlap_dict = pickle.load(handle)
+
+with open('max_gt_overlaps_objects/' + '[60, 90, 120, 150, 250]_[0.5, 0.75, 1.0, 1.5, 2.0]_dataset_2_crowd_min.pkl',
           'rb') as handle:
     max_gt_overlap_dict = pickle.load(handle)
 
@@ -103,14 +107,14 @@ def get_image_label_gt(file_name):
 
 def create(path, batch_size):
     dataset = tf.data.Dataset.list_files(path + '/*.jpg')
-    return dataset.map(get_image_label_gt).repeat().shuffle(batch_size * 10).padded_batch(batch_size,
-                                                                               padded_shapes=(
-                                                                                   [image_height, image_width, 3],
-                                                                                   [None, 4],
-                                                                                   [config.f_map_rows,
-                                                                                    config.f_map_cols,
-                                                                                    len(config.scales),
-                                                                                    len(config.aspect_ratios)]),
-                                                                               padding_values=(
-                                                                               0.0, float('NaN'), 0)).prefetch(
+    return dataset.map(get_image_label_gt).repeat().shuffle(batch_size * 10).padded_batch(batch_size, padded_shapes=(
+        [image_height, image_width, 3],
+        [None, 4],
+        [config.f_map_rows,
+         config.f_map_cols,
+         len(config.scales),
+         len(config.aspect_ratios)]),
+                                                                                          padding_values=(
+                                                                                              0.0, float('NaN'),
+                                                                                              0)).prefetch(
         tf.data.experimental.AUTOTUNE)

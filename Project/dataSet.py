@@ -113,7 +113,6 @@ def create(path, batch_size):
         bb_images = tf.image.flip_left_right(bb_images)
         return image, bb_images
 
-    # TODO: might decrease performance
     def random_quality(image, bb_images):
         image = tf.image.random_jpeg_quality(image, 80, 100)
         return image, bb_images

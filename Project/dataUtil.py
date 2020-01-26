@@ -20,18 +20,18 @@ def __convert_file_annotation_rect(location):
         return rects
 
 
-def __get_dict_from_folder(folder):
+def __get_dict_from_folder(path):
     result_dict = {}
-    for file in os.listdir(folder_offset + folder):
+    for file in os.listdir(path):
         if file.endswith(".txt"):
-            location = folder_offset + folder + '/' + file
-            key = folder_offset + folder + '/' + file.split('.', 1)[0] + '.jpg'
+            location = path + '/' + file
+            key = path + '/' + file.split('.', 1)[0] + '.jpg'
             result_dict[key] = __convert_file_annotation_rect(location)
     return result_dict
 
 
-def get_validation_data(package_size, anchor_grid):
-    items = __get_dict_from_folder('test')
+def get_validation_data(package_size, anchor_grid, path='dataset_mmp/test'):
+    items = __get_dict_from_folder(path)
     images = []
     labels = []
     gt_rects = []

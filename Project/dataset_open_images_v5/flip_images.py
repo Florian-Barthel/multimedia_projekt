@@ -12,8 +12,12 @@ def copy_flipped_image(src, dest):
     return w
 
 
-src_folder = '../../datasets/dataset_2_crowd_min_ratio'
-dest_folder = '../../datasets/dataset_2_crowd_min_ratio_flipped'
+# src_folder = '../../datasets/dataset_2_crowd_min_ratio'
+# dest_folder = '../../datasets/dataset_2_crowd_min_ratio_flipped'
+
+
+src_folder = 'C:/Users/Florian/Desktop/dataset_3'
+dest_folder = 'C:/Users/Florian/Desktop/dataset_3_flipped'
 
 if not os.path.exists(dest_folder):
     os.makedirs(dest_folder)

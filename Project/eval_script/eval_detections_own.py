@@ -138,7 +138,6 @@ def plot_pr_curve(classname, precision, recall, ap, fileprefix, overwrite=False)
         plt.savefig(filename)
 
 
-# TODO: Replace main with callable function
 def run(detection_file, result_file, dataset_dir):
     #    mp.freeze_support()
     '''cparse = ap.ArgumentParser(

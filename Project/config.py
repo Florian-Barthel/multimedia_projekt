@@ -2,12 +2,23 @@ import tensorflow as tf
 from datetime import datetime
 import anchorgrid
 
-use_decaying_learning_rate = True
-use_augmentation = True
-use_hard_negative_mining = False
-use_bounding_box_regression = True
-use_different_dataset = True
-use_adam_optimizer = True
+base_model = False
+
+
+if base_model:
+    use_decaying_learning_rate = False
+    use_augmentation = False
+    use_hard_negative_mining = False
+    use_bounding_box_regression = False
+    use_different_dataset = False
+    use_adam_optimizer = False
+else:
+    use_decaying_learning_rate = False
+    use_augmentation = True
+    use_hard_negative_mining = False
+    use_bounding_box_regression = True
+    use_different_dataset = True
+    use_adam_optimizer = True
 
 using_linux = True
 
@@ -70,7 +81,7 @@ if use_different_dataset:
     # train_dataset = "C:/Users/Florian/Desktop/dataset_3_apply_filter_crowd_min"
     # train_dataset = "C:/Users/Florian/Desktop/dataset_2_crowd_min"
     # train_dataset = "C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio"
-    train_dataset = "C:/Users/Florian/Desktop/dataset_2_crowd_min"
+    # train_dataset = "C:/Users/Florian/Desktop/dataset_2_crowd_min"
     # train_dataset = "C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio_flipped_union"
 
     # Server
@@ -78,8 +89,7 @@ if use_different_dataset:
     # train_dataset = "../datasets/dataset_3_apply_filter_crowd"
     # train_dataset = "../datasets/dataset_3_apply_filter_crowd_min"
     # train_dataset = "../datasets/dataset_2_crowd_min_ratio_flipped"
+    # train_dataset = "../datasets/dataset_2_crowd_min"
+    train_dataset = "../datasets/dataset_2_crowd_min_plus_mmp_dataset_train"
 else:
     train_dataset = 'dataset_mmp/train'
-
-
-

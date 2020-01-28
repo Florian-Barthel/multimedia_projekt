@@ -27,5 +27,6 @@ def anchor_max_gt_overlaps(anchor_grid, gts):
                                                 anchor_grid[y, x, s, a, 1],
                                                 anchor_grid[y, x, s, a, 2],
                                                 anchor_grid[y, x, s, a, 3])
-                    output[y, x, s, a] = max([iou(anchor_box, gt) for gt in gts])
+                    if len([iou(anchor_box, gt) for gt in gts]) > 0:
+                        output[y, x, s, a] = max([iou(anchor_box, gt) for gt in gts])
     return output

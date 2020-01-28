@@ -48,7 +48,7 @@ with tf.Session() as sess:
 
     if config.use_bounding_box_regression:
         # TODO: Change back
-        total_loss = probabilities_loss + adjustments_loss
+        total_loss = probabilities_loss * adjustments_loss
     else:
         total_loss = probabilities_loss
 

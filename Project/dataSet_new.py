@@ -10,7 +10,7 @@ import pickle
 #           'rb') as handle:
 #     max_gt_overlap_dict = pickle.load(handle)
 
-with open('max_gt_overlaps_objects/' + '[60, 90, 120, 150, 250]_[0.5, 0.75, 1.0, 1.5, 2.0]_dataset_2_crowd_min.pkl',
+with open('max_gt_overlaps_objects/' + '[60, 90, 120, 150, 250]_[0.5, 0.75, 1.0, 1.5, 2.0]_2dataset_2_crowd_min_plus_mmp_dataset_train.pkl',
           'rb') as handle:
     max_gt_overlap_dict = pickle.load(handle)
 

@@ -6,11 +6,11 @@ import os
 Filter all boxes with greater width than height
 '''
 
-# src_folder = '../datasets/dataset_2_crowd_min_ratio'
-# dest_folder = '../datasets/dataset_2_crowd_min_ratio_flipped'
+src_folder = '../datasets/dataset_2_crowd_min'
+dest_folder = '../datasets/dataset_2_crowd_min_plus_mmp_dataset_train'
 
-src_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio'
-dest_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio_flipped_union'
+# src_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio'
+# dest_folder = 'C:/Users/Florian/Desktop/dataset_2_crowd_min_ratio_flipped_union'
 
 if not os.path.exists(dest_folder):
     os.makedirs(dest_folder)

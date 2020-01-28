@@ -1,5 +1,6 @@
 from tqdm import tqdm
 import os
+import argparse as ap
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -13,9 +14,17 @@ import mobilenet
 import draw
 from datetime import datetime
 
+cparse = ap.ArgumentParser(
+        prog='Prepare evaluation',
+        description='Prepares evaluation txt file and runs evaluation.')
+cparse.add_argument('--val_data', help='Path to validation data. Default: dataset_mmp/test', default='dataset_mmp/test')
 
-validation_directory = 'dataset_mmp/test'
-model_directory = 'runs/26-01-2020_17-01-48/1499'
+cmdargs = cparse.parse_args()
+
+# validation_directory = 'asdf'
+# validation_directory = 'dataset_mmp/test'
+validation_directory = str(cmdargs.val_data)
+model_directory = 'runs/28-01-2020_00-44-35_best/89999'
 
 current_time = datetime.now()
 result_directory = 'results/' + current_time.strftime('%d-%m-%Y_%H-%M-%S') + '/'
@@ -37,7 +46,7 @@ with tf.Session() as sess:
     saver = tf.train.Saver()
     saver.restore(sess, tf.train.latest_checkpoint(model_directory))
 
-    validation_data = dataUtil.get_validation_data(100, config.anchor_grid)
+    validation_data = dataUtil.get_validation_data(100, config.anchor_grid, validation_directory)
 
     '''
     VALIDATION

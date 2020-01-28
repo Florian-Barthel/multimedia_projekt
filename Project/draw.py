@@ -25,7 +25,7 @@ def draw_bounding_boxes(image, annotation_rects, color):
             draw.rectangle(
                 xy=[rect.x1, rect.y1, rect.x2, rect.y2],
                 outline=color,
-                width=3
+                width=2
             )
     return image
 
@@ -43,7 +43,7 @@ def draw_labels(image, anchor_grid, labels, color):
             draw.rectangle(
                 xy=[rect.x1, rect.y1, rect.x2, rect.y2],
                 outline=color,
-                width=3
+                width=2
             )
     return image
 
